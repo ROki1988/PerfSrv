@@ -2,8 +2,9 @@ program PerfSvc;
 
 uses
   Vcl.SvcMgr,
-  SrvMain in 'SrvMain.pas' {PerfService: TService},
-  CollectMetric in 'CollectMetric.pas';
+  SrvMain in 'SrvMain.pas' {PerfService: TService} ,
+  CollectMetric in 'CollectMetric.pas',
+  config in 'config.pas';
 
 {$R *.RES}
 
@@ -26,4 +27,5 @@ begin
     Application.Initialize;
   Application.CreateForm(TPerfService, PerfService);
   Application.Run;
+
 end.

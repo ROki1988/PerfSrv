@@ -3,7 +3,8 @@ unit CollectMetric;
 interface
 
 uses
-  Winapi.Windows, System.SysUtils, System.Generics.Collections, System.Threading,
+  Winapi.Windows, System.SysUtils, System.Generics.Collections,
+  System.Threading,
   System.Classes, JwaPdh, JwaPdhMsg;
 
 type
@@ -44,7 +45,8 @@ type
 
     procedure AddCounter(const CounterPath: string; const SendPath: string);
 
-    procedure RefilList<TTarget>(const ExportList: TList<TTarget>; AConvertFunc: TFunc<TCollectedMetric, TPdhFmtType, TTarget>);
+    procedure RefilList<TTarget>(const ExportList: TList<TTarget>;
+      AConvertFunc: TFunc<TCollectedMetric, TPdhFmtType, TTarget>);
     procedure FreeListContent();
     property CollectedMetricList: TThreadList<TCollectedMetric>
       read FCollectedMetricList;
@@ -133,8 +135,7 @@ begin
         procedure
         begin
           FIntervalEvent(Self);
-        end
-      );
+        end);
       IntervalTask.Start();
     end;
 
@@ -178,7 +179,9 @@ begin
   Sleep(FIntervalMilSec);
 end;
 
-procedure TMetricsCollectorThread.RefilList<TTarget>(const ExportList: TList<TTarget>; AConvertFunc: TFunc<TCollectedMetric, TPdhFmtType, TTarget>);
+procedure TMetricsCollectorThread.RefilList<TTarget>(const ExportList
+  : TList<TTarget>; AConvertFunc: TFunc<TCollectedMetric, TPdhFmtType,
+  TTarget>);
 var
   ii: Integer;
   Metrics: TList<TCollectedMetric>;

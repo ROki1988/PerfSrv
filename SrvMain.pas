@@ -6,7 +6,7 @@ uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Classes,
   Vcl.Graphics, Vcl.Controls, Vcl.SvcMgr, Vcl.Dialogs, System.SyncObjs,
   System.Generics.Collections, System.DateUtils, System.StrUtils,
-  System.IOUtils,
+  System.IOUtils, config,
   CollectMetric, IdBaseComponent, IdComponent, IdUDPBase, IdUDPClient;
 
 type
@@ -26,10 +26,14 @@ type
     FLogFileName: string;
 
     procedure ConvertToStrFrom(Metric: TObject);
-    function MetricToStr4Graphite(Metric: TCollectedMetric; FmtType: TPdhFmtType): string;
-
+    function MetricToStr4Graphite(Metric: TCollectedMetric;
+      FmtType: TPdhFmtType): string;
+    procedure SettingToUdpClientFrom(const Carbonator: IXMLCarbonatorType);
+    procedure SettingToCollectThreadFrom(const Carbonator: IXMLCarbonatorType);
+    function GetCollectMetricFrom(const AddCounter: IXMLAddType): string;
   public
     function GetServiceController: TServiceController; override;
+    procedure SetCollectSettingFrom(const ConfigFilePath: string);
     { Public êÈåæ }
   end;
 
@@ -56,13 +60,15 @@ begin
 
   StrList := FStrList.LockList();
   try
-    (Metric as TMetricsCollectorThread).RefilList<string>(StrList, MetricToStr4Graphite);
+    (Metric as TMetricsCollectorThread).RefilList<string>(StrList,
+      MetricToStr4Graphite);
   finally
     FStrList.UnlockList();
   end;
 end;
 
-function TPerfService.MetricToStr4Graphite(Metric: TCollectedMetric; FmtType: TPdhFmtType): string;
+function TPerfService.MetricToStr4Graphite(Metric: TCollectedMetric;
+  FmtType: TPdhFmtType): string;
 var
   UnixTime: Int64;
 begin
@@ -98,6 +104,29 @@ begin
   end;
 end;
 
+function TPerfService.GetCollectMetricFrom(const AddCounter
+  : IXMLAddType): string;
+var
+  Instance: string;
+  Counter: string;
+begin
+  Result := EmptyStr;
+  Instance := EmptyStr;
+  Counter := EmptyStr;
+
+  if not SameStr(AddCounter.Instance, EmptyStr) then
+  begin
+    Instance := Format('(%s)', [AddCounter.Instance]);
+  end;
+
+  if not SameStr(AddCounter.Instance, '*') then
+  begin
+    Instance := Format('%s', [AddCounter.Instance]);
+  end;
+
+  Result := Format('\%s%s\%s', [AddCounter.Category, Instance, Counter]);
+end;
+
 function TPerfService.GetServiceController: TServiceController;
 begin
   Result := ServiceController;
@@ -118,18 +147,18 @@ end;
 procedure TPerfService.ServiceExecute(Sender: TService);
 var
   StrList: TList<string>;
+  CurrentStr: string;
 begin
   while not Terminated do
   begin
 
     StrList := FStrList.LockList();
     try
-      TFile.AppendAllText(FLogFileName, Format('strCount = %d', [StrList.Count]) + sLineBreak, TEncoding.UTF8);
-      if StrList.Count > 0 then
+      for CurrentStr in StrList do
       begin
-        TFile.AppendAllText(FLogFileName, string.Join(sLineBreak, StrList.ToArray), TEncoding.UTF8);
-        StrList.Clear();
+        IdUDPClient1.Send(CurrentStr);
       end;
+      StrList.Clear();
     finally
       FStrList.UnlockList();
     end;
@@ -146,13 +175,15 @@ end;
 
 procedure TPerfService.ServiceStart(Sender: TService; var Started: Boolean);
 begin
-  FLogFileName := ExtractFilePath(ParamStr(0)) + FormatDateTime('yymmdd_', Now()) + 'perf.log';
+  FLogFileName := ExtractFilePath(ParamStr(0)) + FormatDateTime('yymmdd_', Now()
+    ) + 'perf.log';
   TFile.AppendAllText(FLogFileName, 'START' + sLineBreak, TEncoding.UTF8);
   FStrList := TThreadList<string>.Create();
   FCollectThread := TMetricsCollectorThread.Create(1000, ConvertToStrFrom);
-  FCollectThread.AddCounter('\Process(firefox)\% Processor Time', 'Cpu(firefox)');
-  FCollectThread.Start();
 
+  SetCollectSettingFrom(TPath.Combine(GetCurrentDir, 'config.xml'));
+
+  FCollectThread.Start();
   Started := True;
 end;
 
@@ -166,6 +197,44 @@ begin
   TFile.AppendAllText(FLogFileName, 'STOP' + sLineBreak, TEncoding.UTF8);
 
   Stopped := True;
+end;
+
+procedure TPerfService.SetCollectSettingFrom(const ConfigFilePath: string);
+var
+  ConfigXML: IXMLConfigurationType;
+  AddCounter: IXMLAddType;
+  ii: Integer;
+begin
+  if not(Assigned(FCollectThread) and (Assigned(IdUDPClient1))) then
+  begin
+    Exit();
+  end;
+
+  ConfigXML := nil;
+  ConfigXML := Loadconfiguration(ConfigFilePath);
+  SettingToUdpClientFrom(ConfigXML.Carbonator);
+  SettingToCollectThreadFrom(ConfigXML.Carbonator);
+end;
+
+procedure TPerfService.SettingToCollectThreadFrom(const Carbonator
+  : IXMLCarbonatorType);
+var
+  AddCounter: IXMLAddType;
+  ii: Integer;
+begin
+  for ii := 0 to Carbonator.Counters.Count - 1 do
+  begin
+    AddCounter := Carbonator.Counters[ii];
+    FCollectThread.AddCounter(GetCollectMetricFrom(AddCounter),
+      AddCounter.Path);
+  end;
+end;
+
+procedure TPerfService.SettingToUdpClientFrom(const Carbonator
+  : IXMLCarbonatorType);
+begin
+  IdUDPClient1.Host := Carbonator.Graphite.Server;
+  IdUDPClient1.Port := Carbonator.Graphite.Port;
 end;
 
 end.
