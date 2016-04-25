@@ -147,12 +147,22 @@ begin
 end;
 
 procedure TPerfService.ServiceExecute(Sender: TService);
+const
+  INTERVAL = 100;
 var
   StrList: TList<string>;
   CurrentStr: string;
+  LoopCount: Integer;
 begin
+  LoopCount := 0;
   while not Terminated do
   begin
+
+    if LoopCount * INTERVAL < 5000 then
+    begin
+      Inc(LoopCount, INTERVAL);
+      Continue;
+    end;
 
     StrList := FStrList.LockList();
     try
@@ -164,7 +174,7 @@ begin
     finally
       FStrList.UnlockList();
     end;
-    Sleep(5000);
+    Sleep(INTERVAL);
   end;
 end;
 
