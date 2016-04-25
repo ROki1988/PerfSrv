@@ -6,7 +6,7 @@ uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Classes,
   Vcl.Graphics, Vcl.Controls, Vcl.SvcMgr, Vcl.Dialogs, System.SyncObjs,
   System.Generics.Collections, System.DateUtils, System.StrUtils,
-  System.IOUtils, config,
+  System.IOUtils, config, Winapi.ActiveX,
   CollectMetric, IdBaseComponent, IdComponent, IdUDPBase, IdUDPClient;
 
 type
@@ -140,6 +140,8 @@ end;
 
 procedure TPerfService.ServiceCreate(Sender: TObject);
 begin
+  SetCurrentDir(ExtractFileDir(ParamStr(0)));
+  FLogFileName := TPath.Combine(GetCurrentDir, FormatDateTime('yymmdd_', Now()) + 'perf.log');
   FCollectThread := nil;
   FStrList := nil;
 end;
@@ -175,13 +177,24 @@ end;
 
 procedure TPerfService.ServiceStart(Sender: TService; var Started: Boolean);
 begin
-  FLogFileName := ExtractFilePath(ParamStr(0)) + FormatDateTime('yymmdd_', Now()
-    ) + 'perf.log';
   TFile.AppendAllText(FLogFileName, 'START' + sLineBreak, TEncoding.UTF8);
   FStrList := TThreadList<string>.Create();
   FCollectThread := TMetricsCollectorThread.Create(1000, ConvertToStrFrom);
 
-  SetCollectSettingFrom(TPath.Combine(GetCurrentDir, 'config.xml'));
+  try
+    CoInitialize(nil);
+    try
+      SetCollectSettingFrom(TPath.Combine(GetCurrentDir, 'config.xml'));
+    finally
+      CoUninitialize
+    end;
+  except
+    on E: Exception do
+    begin
+      TFile.AppendAllText(FLogFileName, 'Error' + E.Message + sLineBreak, TEncoding.UTF8);
+      raise E;
+    end;
+  end;
 
   FCollectThread.Start();
   Started := True;
@@ -202,8 +215,6 @@ end;
 procedure TPerfService.SetCollectSettingFrom(const ConfigFilePath: string);
 var
   ConfigXML: IXMLConfigurationType;
-  AddCounter: IXMLAddType;
-  ii: Integer;
 begin
   if not(Assigned(FCollectThread) and (Assigned(IdUDPClient1))) then
   begin
