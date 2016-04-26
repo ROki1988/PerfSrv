@@ -25,6 +25,7 @@ type
 
     FLogFileName: string;
 
+    procedure SendMetric();
     procedure ConvertToStrFrom(Metric: TObject);
     function MetricToStr4Graphite(Metric: TCollectedMetric;
       FmtType: TPdhFmtType): string;
@@ -132,6 +133,23 @@ begin
   Result := ServiceController;
 end;
 
+procedure TPerfService.SendMetric;
+var
+  StrList: TList<string>;
+  CurrentStr: string;
+begin
+  StrList := FStrList.LockList();
+  try
+    for CurrentStr in StrList do
+    begin
+      IdUDPClient1.Send(CurrentStr);
+    end;
+    StrList.Clear();
+  finally
+    FStrList.UnlockList();
+  end;
+end;
+
 procedure TPerfService.ServiceContinue(Sender: TService;
   var Continued: Boolean);
 begin
@@ -150,8 +168,6 @@ procedure TPerfService.ServiceExecute(Sender: TService);
 const
   INTERVAL = 100;
 var
-  StrList: TList<string>;
-  CurrentStr: string;
   LoopCount: Integer;
 begin
   LoopCount := 0;
@@ -161,19 +177,13 @@ begin
     if LoopCount * INTERVAL < 5000 then
     begin
       Inc(LoopCount, INTERVAL);
-      Continue;
+    end
+    else
+    begin
+      SendMetric();
+      LoopCount := 0;
     end;
 
-    StrList := FStrList.LockList();
-    try
-      for CurrentStr in StrList do
-      begin
-        IdUDPClient1.Send(CurrentStr);
-      end;
-      StrList.Clear();
-    finally
-      FStrList.UnlockList();
-    end;
     ServiceThread.ProcessRequests(False);
     Sleep(INTERVAL);
   end;
