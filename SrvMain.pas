@@ -174,6 +174,7 @@ begin
     finally
       FStrList.UnlockList();
     end;
+    ServiceThread.ProcessRequests(False);
     Sleep(INTERVAL);
   end;
 end;
@@ -213,7 +214,6 @@ end;
 procedure TPerfService.ServiceStop(Sender: TService; var Stopped: Boolean);
 begin
   FCollectThread.Terminate();
-  Sleep(1000);
   FreeAndNil(FCollectThread);
 
   FreeAndNil(FStrList);
