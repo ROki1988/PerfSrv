@@ -159,7 +159,8 @@ end;
 procedure TPerfService.ServiceCreate(Sender: TObject);
 begin
   SetCurrentDir(ExtractFileDir(ParamStr(0)));
-  FLogFileName := TPath.Combine(GetCurrentDir, FormatDateTime('yymmdd_', Now()) + 'perf.log');
+  FLogFileName := TPath.Combine(GetCurrentDir, FormatDateTime('yymmdd_', Now())
+    + 'perf.log');
   FCollectThread := nil;
   FStrList := nil;
 end;
@@ -180,7 +181,15 @@ begin
     end
     else
     begin
-      SendMetric();
+      if not IdUDPClient1.Connected then
+      begin
+        IdUDPClient1.Connect;
+      end;
+
+      if IdUDPClient1.Connected then
+      begin
+        SendMetric();
+      end;
       LoopCount := 0;
     end;
 
@@ -212,7 +221,8 @@ begin
   except
     on E: Exception do
     begin
-      TFile.AppendAllText(FLogFileName, 'Error' + E.Message + sLineBreak, TEncoding.UTF8);
+      TFile.AppendAllText(FLogFileName, 'Error' + E.Message + sLineBreak,
+        TEncoding.UTF8);
       raise E;
     end;
   end;
