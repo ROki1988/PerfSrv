@@ -25,6 +25,7 @@ type
 
     FLogFileName: string;
 
+    procedure OutputToConsole(Metric: TObject);
     procedure SendMetric();
     procedure ConvertToStrFrom(Metric: TObject);
     function MetricToStr4Graphite(Metric: TCollectedMetric;
@@ -32,6 +33,7 @@ type
     procedure SettingToUdpClientFrom(const Carbonator: IXMLCarbonatorType);
     procedure SettingToCollectThreadFrom(const Carbonator: IXMLCarbonatorType);
     function GetCollectMetricFrom(const AddCounter: IXMLAddType): string;
+    function GetSendPathFrom(const AddCounter: IXMLAddType): string;
   public
     function GetServiceController: TServiceController; override;
     procedure SetCollectSettingFrom(const ConfigFilePath: string);
@@ -105,6 +107,34 @@ begin
   end;
 end;
 
+procedure TPerfService.OutputToConsole(Metric: TObject);
+var
+  StrList: TList<string>;
+  CurrentStr: string;
+begin
+  if not(Assigned(Metric) and (Metric is TMetricsCollectorThread)) then
+  begin
+    Exit();
+  end;
+
+  StrList := FStrList.LockList();
+  try
+    (Metric as TMetricsCollectorThread).RefilList<string>(StrList,
+      MetricToStr4Graphite);
+
+    for CurrentStr in StrList do
+    begin
+      TThread.Synchronize(nil,
+        procedure
+        begin
+          Writeln(Output, CurrentStr);
+        end);
+    end;
+  finally
+    FStrList.UnlockList();
+  end;
+end;
+
 function TPerfService.GetCollectMetricFrom(const AddCounter
   : IXMLAddType): string;
 var
@@ -120,12 +150,27 @@ begin
     Instance := Format('(%s)', [AddCounter.Instance]);
   end;
 
-  if not SameStr(AddCounter.Instance, '*') then
+  if not SameStr(AddCounter.Counter, '*') then
+  begin
+    Counter := Format('%s', [AddCounter.Counter]);
+  end;
+
+  Result := Format('\%s%s\%s', [AddCounter.Category, Instance, Counter]);
+end;
+
+function TPerfService.GetSendPathFrom(const AddCounter: IXMLAddType): string;
+var
+  Instance: string;
+  Counter: string;
+begin
+  Result := AddCounter.Path;
+  Instance := EmptyStr;
+  if not SameStr(AddCounter.Instance, EmptyStr) then
   begin
     Instance := Format('%s', [AddCounter.Instance]);
   end;
 
-  Result := Format('\%s%s\%s', [AddCounter.Category, Instance, Counter]);
+  Result := ReplaceStr(Result, '%COUNTER_INSTANCE%', Instance);
 end;
 
 function TPerfService.GetServiceController: TServiceController;
@@ -163,6 +208,23 @@ begin
     + 'perf.log');
   FCollectThread := nil;
   FStrList := nil;
+  FStrList := TThreadList<string>.Create();
+
+
+  if SameStr(ParamStr(1), '--console') then
+  begin
+    AllocConsole;
+    FCollectThread := TMetricsCollectorThread.Create(1000, OutputToConsole);
+    SetCollectSettingFrom(TPath.Combine(GetCurrentDir, 'config.xml'));
+    Writeln(Output, DateTimeToStr(Now()));
+    FCollectThread.Start;
+    FCollectThread.WaitFor;
+  end
+  else
+  begin
+    FCollectThread := TMetricsCollectorThread.Create(1000, ConvertToStrFrom);
+    SetCollectSettingFrom(TPath.Combine(GetCurrentDir, 'config.xml'));
+  end;
 end;
 
 procedure TPerfService.ServiceExecute(Sender: TService);
@@ -208,25 +270,6 @@ end;
 procedure TPerfService.ServiceStart(Sender: TService; var Started: Boolean);
 begin
   TFile.AppendAllText(FLogFileName, 'START' + sLineBreak, TEncoding.UTF8);
-  FStrList := TThreadList<string>.Create();
-  FCollectThread := TMetricsCollectorThread.Create(1000, ConvertToStrFrom);
-
-  try
-    CoInitialize(nil);
-    try
-      SetCollectSettingFrom(TPath.Combine(GetCurrentDir, 'config.xml'));
-    finally
-      CoUninitialize
-    end;
-  except
-    on E: Exception do
-    begin
-      TFile.AppendAllText(FLogFileName, 'Error' + E.Message + sLineBreak,
-        TEncoding.UTF8);
-      raise E;
-    end;
-  end;
-
   FCollectThread.Start();
   Started := True;
 end;
@@ -252,9 +295,23 @@ begin
   end;
 
   ConfigXML := nil;
-  ConfigXML := Loadconfiguration(ConfigFilePath);
-  SettingToUdpClientFrom(ConfigXML.Carbonator);
-  SettingToCollectThreadFrom(ConfigXML.Carbonator);
+  try
+    CoInitialize(nil);
+    try
+      ConfigXML := Loadconfiguration(ConfigFilePath);
+      SettingToUdpClientFrom(ConfigXML.Carbonator);
+      SettingToCollectThreadFrom(ConfigXML.Carbonator);
+    finally
+      CoUninitialize
+    end;
+  except
+    on E: Exception do
+    begin
+      TFile.AppendAllText(FLogFileName, 'Error' + E.Message + sLineBreak,
+        TEncoding.UTF8);
+      raise E;
+    end;
+  end;
 end;
 
 procedure TPerfService.SettingToCollectThreadFrom(const Carbonator
@@ -267,7 +324,7 @@ begin
   begin
     AddCounter := Carbonator.Counters[ii];
     FCollectThread.AddCounter(GetCollectMetricFrom(AddCounter),
-      AddCounter.Path);
+      GetSendPathFrom(AddCounter));
   end;
 end;
 
