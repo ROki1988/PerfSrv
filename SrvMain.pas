@@ -25,6 +25,7 @@ type
 
     FLogFileName: string;
 
+    procedure StartConsoleMode();
     procedure OutputToConsole(Metric: TObject);
     procedure SendMetric();
     procedure ConvertToStrFrom(Metric: TObject);
@@ -209,21 +210,18 @@ begin
   FCollectThread := nil;
   FStrList := nil;
   FStrList := TThreadList<string>.Create();
+  FCollectThread := TMetricsCollectorThread.Create();
+  SetCollectSettingFrom(TPath.Combine(GetCurrentDir, 'config.xml'));
 
 
   if SameStr(ParamStr(1), '--console') then
   begin
-    AllocConsole;
-    FCollectThread := TMetricsCollectorThread.Create(1000, OutputToConsole);
-    SetCollectSettingFrom(TPath.Combine(GetCurrentDir, 'config.xml'));
-    Writeln(Output, DateTimeToStr(Now()));
-    FCollectThread.Start;
-    FCollectThread.WaitFor;
+    FCollectThread.SetIntervalEvent(1000, OutputToConsole);
+    StartConsoleMode();
   end
   else
   begin
-    FCollectThread := TMetricsCollectorThread.Create(1000, ConvertToStrFrom);
-    SetCollectSettingFrom(TPath.Combine(GetCurrentDir, 'config.xml'));
+    FCollectThread.SetIntervalEvent(1000, ConvertToStrFrom);
   end;
 end;
 
@@ -333,6 +331,19 @@ procedure TPerfService.SettingToUdpClientFrom(const Carbonator
 begin
   IdUDPClient1.Host := Carbonator.Graphite.Server;
   IdUDPClient1.Port := Carbonator.Graphite.Port;
+end;
+
+procedure TPerfService.StartConsoleMode;
+begin
+    AllocConsole;
+    try
+      Writeln(Output, DateTimeToStr(Now()));
+      FCollectThread.Start;
+      FCollectThread.WaitFor;
+
+    finally
+      FreeConsole;
+    end;
 end;
 
 end.
