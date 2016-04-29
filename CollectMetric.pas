@@ -31,18 +31,20 @@ type
     FIntervalMilSec: Integer;
     hQuery: PDH_HQUERY;
     hCounters: TList<PDH_HCOUNTER>;
-    FCounterPathPairs: TList<TPair<string, string>>;
     FCollectedMetricList: TThreadList<TCollectedMetric>;
     FIntervalEvent: TNotifyEvent;
 
     procedure InitQuery();
   protected
+    FCounterPathPairs: TList<TPair<string, string>>;
+
     procedure Execute(); override;
   public
-    constructor Create(AIntervalMilSec: Integer = 1000;
-      AIntervalEvent: TNotifyEvent = nil);
+    constructor Create();
     destructor Destroy; override;
 
+    procedure SetIntervalEvent(AIntervalMilSec: Integer;
+      AIntervalEvent: TNotifyEvent);
     procedure AddCounter(const CounterPath: string; const SendPath: string);
 
     procedure RefilList<TTarget>(const ExportList: TList<TTarget>;
@@ -72,18 +74,17 @@ begin
   FCounterPathPairs.Add(TPair<string, string>.Create(CounterPath, SendPath));
 end;
 
-constructor TMetricsCollectorThread.Create(AIntervalMilSec: Integer = 1000;
-  AIntervalEvent: TNotifyEvent = nil);
+constructor TMetricsCollectorThread.Create();
 begin
   inherited Create(True);
   hQuery := 0;
-  FIntervalMilSec := AIntervalMilSec;
+  FIntervalMilSec := 1000;
   FreeOnTerminate := False;
 
   hCounters := nil;
   FCounterPathPairs := nil;
   FCollectedMetricList := nil;
-  FIntervalEvent := AIntervalEvent;
+  FIntervalEvent := nil;
 
   hCounters := TList<PDH_HCOUNTER>.Create();
   FCounterPathPairs := TList < TPair < string, string >>.Create();
@@ -203,6 +204,13 @@ begin
   finally
     FCollectedMetricList.UnlockList();
   end;
+end;
+
+procedure TMetricsCollectorThread.SetIntervalEvent(AIntervalMilSec: Integer;
+  AIntervalEvent: TNotifyEvent);
+begin
+  FIntervalMilSec := AIntervalMilSec;
+  FIntervalEvent := AIntervalEvent;
 end;
 
 end.

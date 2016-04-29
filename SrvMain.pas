@@ -10,6 +10,9 @@ uses
   CollectMetric, IdBaseComponent, IdComponent, IdUDPBase, IdUDPClient;
 
 type
+  TLoopState = (lsNone, lsContinue, lsExit);
+
+type
   TPerfService = class(TService)
     IdUDPClient1: TIdUDPClient;
     procedure ServiceCreate(Sender: TObject);
@@ -24,6 +27,14 @@ type
     FStrList: TThreadList<string>;
 
     FLogFileName: string;
+    FLoopFunc: function: TLoopState of object;
+    FLoopCount: Integer;
+
+    procedure ChangeProcByStatus(ASender: TObject; const AStatus: TIdStatus;
+      const AStatusText: string);
+
+    function Func4Connected(): TLoopState;
+    function Func4DisConnected(): TLoopState;
 
     procedure StartConsoleMode();
     procedure OutputToConsole(Metric: TObject);
@@ -36,6 +47,7 @@ type
     function GetCollectMetricFrom(const AddCounter: IXMLAddType): string;
     function GetSendPathFrom(const AddCounter: IXMLAddType): string;
   public
+    const INTERVAL = 100;
     function GetServiceController: TServiceController; override;
     procedure SetCollectSettingFrom(const ConfigFilePath: string);
     { Public êÈåæ }
@@ -51,6 +63,22 @@ implementation
 procedure ServiceController(CtrlCode: DWord); stdcall;
 begin
   PerfService.Controller(CtrlCode);
+end;
+
+procedure TPerfService.ChangeProcByStatus(ASender: TObject;
+  const AStatus: TIdStatus; const AStatusText: string);
+begin
+  case AStatus of
+    hsResolving: ;
+    hsConnecting: ;
+    hsConnected: FLoopFunc := Func4Connected;
+    hsDisconnecting: FLoopFunc := nil;
+    hsDisconnected: FLoopFunc := Func4DisConnected;
+    hsStatusText: ;
+    ftpTransfer: ;
+    ftpReady: ;
+    ftpAborted: ;
+  end;
 end;
 
 procedure TPerfService.ConvertToStrFrom(Metric: TObject);
@@ -69,6 +97,24 @@ begin
   finally
     FStrList.UnlockList();
   end;
+end;
+
+function TPerfService.Func4Connected: TLoopState;
+begin
+  if FLoopCount * INTERVAL < 5000 then
+  begin
+    Inc(FLoopCount, INTERVAL);
+  end
+  else
+  begin
+    SendMetric();
+    FLoopCount := 0;
+  end;
+end;
+
+function TPerfService.Func4DisConnected: TLoopState;
+begin
+  IdUDPClient1.Connect;
 end;
 
 function TPerfService.MetricToStr4Graphite(Metric: TCollectedMetric;
@@ -226,35 +272,27 @@ begin
 end;
 
 procedure TPerfService.ServiceExecute(Sender: TService);
-const
-  INTERVAL = 100;
 var
-  LoopCount: Integer;
+  LoopState: TLoopState;
 begin
-  LoopCount := 0;
+  FLoopCount := 0;
   while not Terminated do
   begin
+    LoopState := lsNone;
 
-    if LoopCount * INTERVAL < 5000 then
+    if Assigned(FLoopFunc) then
     begin
-      Inc(LoopCount, INTERVAL);
-    end
-    else
-    begin
-      if not IdUDPClient1.Connected then
-      begin
-        IdUDPClient1.Connect;
-      end;
-
-      if IdUDPClient1.Connected then
-      begin
-        SendMetric();
-      end;
-      LoopCount := 0;
+      LoopState := FLoopFunc();
     end;
 
     ServiceThread.ProcessRequests(False);
     Sleep(INTERVAL);
+
+    case LoopState of
+      lsNone: ;
+      lsContinue: Continue;
+      lsExit: Exit;
+    end;
   end;
 end;
 
@@ -268,6 +306,7 @@ end;
 procedure TPerfService.ServiceStart(Sender: TService; var Started: Boolean);
 begin
   TFile.AppendAllText(FLogFileName, 'START' + sLineBreak, TEncoding.UTF8);
+  IdUDPClient1.OnStatus := ChangeProcByStatus;
   FCollectThread.Start();
   Started := True;
 end;
