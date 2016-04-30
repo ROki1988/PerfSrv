@@ -30,6 +30,9 @@ type
     FLoopFunc: function: TLoopState of object;
     FLoopCount: Integer;
 
+    FIsConsoleMode: Boolean;
+    FSendIntervalMSec: Integer;
+
     procedure ChangeProcByStatus(ASender: TObject; const AStatus: TIdStatus;
       const AStatusText: string);
 
@@ -46,8 +49,8 @@ type
     procedure SettingToCollectThreadFrom(const Carbonator: IXMLCarbonatorType);
     function GetCollectMetricFrom(const AddCounter: IXMLAddType): string;
     function GetSendPathFrom(const AddCounter: IXMLAddType): string;
-  public
-    const INTERVAL = 100;
+  public const
+    INTERVAL = 100;
     function GetServiceController: TServiceController; override;
     procedure SetCollectSettingFrom(const ConfigFilePath: string);
     { Public êÈåæ }
@@ -69,15 +72,24 @@ procedure TPerfService.ChangeProcByStatus(ASender: TObject;
   const AStatus: TIdStatus; const AStatusText: string);
 begin
   case AStatus of
-    hsResolving: ;
-    hsConnecting: ;
-    hsConnected: FLoopFunc := Func4Connected;
-    hsDisconnecting: FLoopFunc := nil;
-    hsDisconnected: FLoopFunc := Func4DisConnected;
-    hsStatusText: ;
-    ftpTransfer: ;
-    ftpReady: ;
-    ftpAborted: ;
+    hsResolving:
+      ;
+    hsConnecting:
+      ;
+    hsConnected:
+      FLoopFunc := Func4Connected;
+    hsDisconnecting:
+      FLoopFunc := nil;
+    hsDisconnected:
+      FLoopFunc := Func4DisConnected;
+    hsStatusText:
+      ;
+    ftpTransfer:
+      ;
+    ftpReady:
+      ;
+    ftpAborted:
+      ;
   end;
 end;
 
@@ -101,9 +113,11 @@ end;
 
 function TPerfService.Func4Connected: TLoopState;
 begin
-  if FLoopCount * INTERVAL < 5000 then
+  Result := lsNone;
+
+  if FLoopCount * INTERVAL < FSendIntervalMSec then
   begin
-    Inc(FLoopCount, INTERVAL);
+    Inc(FLoopCount);
   end
   else
   begin
@@ -243,7 +257,7 @@ begin
 end;
 
 procedure TPerfService.ServiceContinue(Sender: TService;
-  var Continued: Boolean);
+var Continued: Boolean);
 begin
   FCollectThread.Resume();
 end;
@@ -255,19 +269,15 @@ begin
     + 'perf.log');
   FCollectThread := nil;
   FStrList := nil;
+
+  FIsConsoleMode := SameStr(ParamStr(1), '--console');
   FStrList := TThreadList<string>.Create();
   FCollectThread := TMetricsCollectorThread.Create();
   SetCollectSettingFrom(TPath.Combine(GetCurrentDir, 'config.xml'));
 
-
-  if SameStr(ParamStr(1), '--console') then
+  if FIsConsoleMode then
   begin
-    FCollectThread.SetIntervalEvent(1000, OutputToConsole);
     StartConsoleMode();
-  end
-  else
-  begin
-    FCollectThread.SetIntervalEvent(1000, ConvertToStrFrom);
   end;
 end;
 
@@ -285,14 +295,17 @@ begin
       LoopState := FLoopFunc();
     end;
 
-    ServiceThread.ProcessRequests(False);
-    Sleep(INTERVAL);
-
     case LoopState of
-      lsNone: ;
-      lsContinue: Continue;
-      lsExit: Exit;
+      lsNone:
+        ;
+      lsContinue:
+        Continue;
+      lsExit:
+        Exit;
     end;
+
+    Sleep(INTERVAL);
+    ServiceThread.ProcessRequests(False);
   end;
 end;
 
@@ -306,7 +319,10 @@ end;
 procedure TPerfService.ServiceStart(Sender: TService; var Started: Boolean);
 begin
   TFile.AppendAllText(FLogFileName, 'START' + sLineBreak, TEncoding.UTF8);
+
   IdUDPClient1.OnStatus := ChangeProcByStatus;
+  IdUDPClient1.Connect();
+
   FCollectThread.Start();
   Started := True;
 end;
@@ -363,6 +379,19 @@ begin
     FCollectThread.AddCounter(GetCollectMetricFrom(AddCounter),
       GetSendPathFrom(AddCounter));
   end;
+  TFile.AppendAllText(FLogFileName, 'CollectionInterval: ' +
+    IntToStr(Carbonator.CollectionInterval) + sLineBreak, TEncoding.UTF8);
+
+  if FIsConsoleMode then
+  begin
+    FCollectThread.SetIntervalEvent(Carbonator.CollectionInterval,
+      OutputToConsole);
+  end
+  else
+  begin
+    FCollectThread.SetIntervalEvent(Carbonator.CollectionInterval,
+      ConvertToStrFrom);
+  end;
 end;
 
 procedure TPerfService.SettingToUdpClientFrom(const Carbonator
@@ -370,19 +399,22 @@ procedure TPerfService.SettingToUdpClientFrom(const Carbonator
 begin
   IdUDPClient1.Host := Carbonator.Graphite.Server;
   IdUDPClient1.Port := Carbonator.Graphite.Port;
+  FSendIntervalMSec := Carbonator.ReportingInterval;
+  TFile.AppendAllText(FLogFileName, 'SendIntervalMSec: ' +
+    IntToStr(FSendIntervalMSec) + sLineBreak, TEncoding.UTF8);
 end;
 
 procedure TPerfService.StartConsoleMode;
 begin
-    AllocConsole;
-    try
-      Writeln(Output, DateTimeToStr(Now()));
-      FCollectThread.Start;
-      FCollectThread.WaitFor;
+  AllocConsole;
+  try
+    Writeln(Output, DateTimeToStr(Now()));
+    FCollectThread.Start;
+    FCollectThread.WaitFor;
 
-    finally
-      FreeConsole;
-    end;
+  finally
+    FreeConsole;
+  end;
 end;
 
 end.
