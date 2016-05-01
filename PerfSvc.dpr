@@ -4,7 +4,8 @@ uses
   Vcl.SvcMgr,
   SrvMain in 'SrvMain.pas' {PerfService: TService} ,
   CollectMetric in 'CollectMetric.pas',
-  config in 'config.pas';
+  config in 'config.pas',
+  ObjectUtils in 'ObjectUtils.pas';
 
 {$R *.RES}
 

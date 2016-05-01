@@ -61,6 +61,9 @@ var
 
 implementation
 
+uses
+  ObjectUtils;
+
 {$R *.dfm}
 
 procedure ServiceController(CtrlCode: DWord); stdcall;
@@ -95,17 +98,17 @@ end;
 
 procedure TPerfService.ConvertToStrFrom(Metric: TObject);
 var
+  Worker: TMetricsCollectorThread;
   StrList: TList<string>;
 begin
-  if not(Assigned(Metric) and (Metric is TMetricsCollectorThread)) then
+  if not TObject.TryCastTo(Metric, Worker) then
   begin
     Exit();
   end;
 
   StrList := FStrList.LockList();
   try
-    (Metric as TMetricsCollectorThread).RefilList<string>(StrList,
-      MetricToStr4Graphite);
+    Worker.RefilList<string>(StrList, MetricToStr4Graphite);
   finally
     FStrList.UnlockList();
   end;
@@ -170,18 +173,18 @@ end;
 
 procedure TPerfService.OutputToConsole(Metric: TObject);
 var
+  Worker: TMetricsCollectorThread;
   StrList: TList<string>;
   CurrentStr: string;
 begin
-  if not(Assigned(Metric) and (Metric is TMetricsCollectorThread)) then
+  if not TObject.TryCastTo(Metric, Worker) then
   begin
     Exit();
   end;
 
   StrList := FStrList.LockList();
   try
-    (Metric as TMetricsCollectorThread).RefilList<string>(StrList,
-      MetricToStr4Graphite);
+    Worker.RefilList<string>(StrList, MetricToStr4Graphite);
 
     for CurrentStr in StrList do
     begin
