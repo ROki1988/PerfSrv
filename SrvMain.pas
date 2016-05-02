@@ -27,6 +27,8 @@ type
     FStrList: TThreadList<string>;
 
     FLogFileName: string;
+    FComputerName: string;
+
     FLoopFunc: function: TLoopState of object;
     FLoopCount: Integer;
 
@@ -43,6 +45,8 @@ type
     procedure OutputToConsole(Metric: TObject);
     procedure SendMetric();
     procedure ConvertToStrFrom(Metric: TObject);
+
+    function GetLocalMachineName(): string;
     function MetricToStr4Graphite(Metric: TCollectedMetric;
       FmtType: TPdhFmtType): string;
     procedure SettingToUdpClientFrom(const Carbonator: IXMLCarbonatorType);
@@ -222,6 +226,23 @@ begin
   Result := Format('\%s%s\%s', [AddCounter.Category, Instance, Counter]);
 end;
 
+function TPerfService.GetLocalMachineName: string;
+var
+  Size: DWORD;
+begin
+  Result := EmptyStr;
+
+  Size := 0;
+  GetComputerNameEx(ComputerNameNetBIOS, nil, Size);
+  SetLength(Result, Size);
+
+  if not GetComputerNameEx(ComputerNameNetBIOS, PWideChar(Result), Size) then
+  begin
+    RaiseLastOSError;
+  end;
+  SetLength(Result, Size);
+end;
+
 function TPerfService.GetSendPathFrom(const AddCounter: IXMLAddType): string;
 var
   Instance: string;
@@ -229,11 +250,14 @@ var
 begin
   Result := AddCounter.Path;
   Instance := EmptyStr;
+
   if not SameStr(AddCounter.Instance, EmptyStr) then
   begin
     Instance := Format('%s', [AddCounter.Instance]);
   end;
 
+  Result := ReplaceStr(Result, '%HOST%', FComputerName);
+  Result := ReplaceStr(Result, '%COUNTER_CATEGORY%', AddCounter.Category);
   Result := ReplaceStr(Result, '%COUNTER_INSTANCE%', Instance);
 end;
 
@@ -270,6 +294,7 @@ begin
   SetCurrentDir(ExtractFileDir(ParamStr(0)));
   FLogFileName := TPath.Combine(GetCurrentDir, FormatDateTime('yymmdd_', Now())
     + 'perf.log');
+  FComputerName := GetLocalMachineName();
   FCollectThread := nil;
   FStrList := nil;
 
