@@ -21,6 +21,8 @@ type
     procedure ServiceContinue(Sender: TService; var Continued: Boolean);
     procedure ServicePause(Sender: TService; var Paused: Boolean);
     procedure ServiceExecute(Sender: TService);
+    procedure IdUDPClient1Connected(Sender: TObject);
+    procedure IdUDPClient1Disconnected(Sender: TObject);
   private
     { Private êÈåæ }
     FCollectThread: TMetricsCollectorThread;
@@ -34,9 +36,6 @@ type
 
     FIsConsoleMode: Boolean;
     FSendIntervalMSec: Integer;
-
-    procedure ChangeProcByStatus(ASender: TObject; const AStatus: TIdStatus;
-      const AStatusText: string);
 
     function Func4Connected(): TLoopState;
     function Func4DisConnected(): TLoopState;
@@ -73,31 +72,6 @@ uses
 procedure ServiceController(CtrlCode: DWord); stdcall;
 begin
   PerfService.Controller(CtrlCode);
-end;
-
-procedure TPerfService.ChangeProcByStatus(ASender: TObject;
-  const AStatus: TIdStatus; const AStatusText: string);
-begin
-  case AStatus of
-    hsResolving:
-      ;
-    hsConnecting:
-      ;
-    hsConnected:
-      FLoopFunc := Func4Connected;
-    hsDisconnecting:
-      FLoopFunc := nil;
-    hsDisconnected:
-      FLoopFunc := Func4DisConnected;
-    hsStatusText:
-      ;
-    ftpTransfer:
-      ;
-    ftpReady:
-      ;
-    ftpAborted:
-      ;
-  end;
 end;
 
 procedure TPerfService.ConvertToStrFrom(Metric: TObject);
@@ -266,6 +240,16 @@ begin
   Result := ServiceController;
 end;
 
+procedure TPerfService.IdUDPClient1Connected(Sender: TObject);
+begin
+  FLoopFunc := Func4Connected;
+end;
+
+procedure TPerfService.IdUDPClient1Disconnected(Sender: TObject);
+begin
+  FLoopFunc := Func4DisConnected;
+end;
+
 procedure TPerfService.SendMetric;
 var
   StrList: TList<string>;
@@ -348,7 +332,6 @@ procedure TPerfService.ServiceStart(Sender: TService; var Started: Boolean);
 begin
   TFile.AppendAllText(FLogFileName, 'START' + sLineBreak, TEncoding.UTF8);
 
-  IdUDPClient1.OnStatus := ChangeProcByStatus;
   IdUDPClient1.Connect();
 
   FCollectThread.Start();
