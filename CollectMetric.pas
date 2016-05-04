@@ -112,6 +112,7 @@ var
   ii: Integer;
   IntervalTask: ITask;
 begin
+  TThread.NameThreadForDebugging(Self.ClassName);
 
   InitQuery();
 
