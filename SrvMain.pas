@@ -26,7 +26,6 @@ type
   private
     { Private êÈåæ }
     FCollectThread: TMetricsCollectorThread;
-    FStrList: TThreadList<string>;
 
     FLogFileName: string;
     FComputerName: string;
@@ -40,7 +39,13 @@ type
     function Func4Connected(): TLoopState;
     function Func4DisConnected(): TLoopState;
 
+    function GetMaxStateCollectCount: Integer;
+
     procedure StartConsoleMode();
+  protected
+    FStrList: TThreadList<string>;
+    FCollectCounter: Integer;
+
     procedure OutputToConsole(Metric: TObject);
     procedure SendMetric();
     procedure ConvertToStrFrom(Metric: TObject);
@@ -52,8 +57,8 @@ type
     procedure SettingToCollectThreadFrom(const Carbonator: IXMLCarbonatorType);
     function GetCollectMetricFrom(const AddCounter: IXMLAddType): string;
     function GetSendPathFrom(const AddCounter: IXMLAddType): string;
-  public const
-    INTERVAL = 100;
+  public
+    const INTERVAL = 100;
     function GetServiceController: TServiceController; override;
     procedure SetCollectSettingFrom(const ConfigFilePath: string);
     { Public êÈåæ }
@@ -87,6 +92,10 @@ begin
   StrList := FStrList.LockList();
   try
     Worker.RefilList<string>(StrList, MetricToStr4Graphite);
+    if StrList.Count > GetMaxStateCollectCount then
+    begin
+      StrList.DeleteRange(0, StrList.Count - GetMaxStateCollectCount);
+    end;
   finally
     FStrList.UnlockList();
   end;
@@ -109,6 +118,8 @@ end;
 
 function TPerfService.Func4DisConnected: TLoopState;
 begin
+  Result := lsNone;
+
   IdUDPClient1.Connect;
 end;
 
@@ -217,10 +228,14 @@ begin
   SetLength(Result, Size);
 end;
 
+function TPerfService.GetMaxStateCollectCount: Integer;
+begin
+  Result := 1000 * FCollectCounter;
+end;
+
 function TPerfService.GetSendPathFrom(const AddCounter: IXMLAddType): string;
 var
   Instance: string;
-  Counter: string;
 begin
   Result := AddCounter.Path;
   Instance := EmptyStr;
@@ -275,6 +290,7 @@ end;
 
 procedure TPerfService.ServiceCreate(Sender: TObject);
 begin
+  FCollectCounter := 0;
   SetCurrentDir(ExtractFileDir(ParamStr(0)));
   FLogFileName := TPath.Combine(GetCurrentDir, FormatDateTime('yymmdd_', Now())
     + 'perf.log');
@@ -384,7 +400,8 @@ var
   AddCounter: IXMLAddType;
   ii: Integer;
 begin
-  for ii := 0 to Carbonator.Counters.Count - 1 do
+  FCollectCounter := Carbonator.Counters.Count;
+  for ii := 0 to FCollectCounter - 1 do
   begin
     AddCounter := Carbonator.Counters[ii];
     FCollectThread.AddCounter(GetCollectMetricFrom(AddCounter),

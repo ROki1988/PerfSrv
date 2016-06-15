@@ -21,7 +21,7 @@ begin
   Result := Assigned(Source) and (Source is TTarget);
   if Result then
   begin
-    Dest := Source as TTarget;
+    Dest := TTarget(Source);
   end;
 end;
 
