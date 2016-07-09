@@ -2,10 +2,11 @@ program PerfSvc;
 
 uses
   Vcl.SvcMgr,
-  SrvMain in 'SrvMain.pas' {PerfService: TService} ,
+  SrvMain in 'SrvMain.pas' {PerfService: TService},
   CollectMetric in 'CollectMetric.pas',
   config in 'config.pas',
-  ObjectUtils in 'ObjectUtils.pas';
+  ObjectUtils in 'ObjectUtils.pas',
+  TcpSendThread in 'TcpSendThread.pas';
 
 {$R *.RES}
 

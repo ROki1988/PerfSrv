@@ -9,9 +9,4 @@ object PerfService: TPerfService
   OnStop = ServiceStop
   Height = 150
   Width = 215
-  object IdUDPClient1: TIdUDPClient
-    Port = 0
-    OnConnected = IdUDPClient1Connected
-    OnDisconnected = IdUDPClient1Disconnected
-  end
 end

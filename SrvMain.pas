@@ -7,47 +7,33 @@ uses
   Vcl.Graphics, Vcl.Controls, Vcl.SvcMgr, Vcl.Dialogs, System.SyncObjs,
   System.Generics.Collections, System.DateUtils, System.StrUtils,
   System.IOUtils, config, Winapi.ActiveX,
-  CollectMetric, IdBaseComponent, IdComponent, IdUDPBase, IdUDPClient;
-
-type
-  TLoopState = (lsNone, lsContinue, lsExit);
+  CollectMetric, TcpSendThread;
 
 type
   TPerfService = class(TService)
-    IdUDPClient1: TIdUDPClient;
     procedure ServiceCreate(Sender: TObject);
     procedure ServiceStart(Sender: TService; var Started: Boolean);
     procedure ServiceStop(Sender: TService; var Stopped: Boolean);
     procedure ServiceContinue(Sender: TService; var Continued: Boolean);
     procedure ServicePause(Sender: TService; var Paused: Boolean);
     procedure ServiceExecute(Sender: TService);
-    procedure IdUDPClient1Connected(Sender: TObject);
-    procedure IdUDPClient1Disconnected(Sender: TObject);
   private
     { Private êÈåæ }
     FCollectThread: TMetricsCollectorThread;
+    FSendThread: TTcpSendThread;
 
     FLogFileName: string;
     FComputerName: string;
 
-    FLoopFunc: function: TLoopState of object;
-    FLoopCount: Integer;
-
     FIsConsoleMode: Boolean;
-    FSendIntervalMSec: Integer;
-
-    function Func4Connected(): TLoopState;
-    function Func4DisConnected(): TLoopState;
 
     function GetMaxStateCollectCount: Integer;
 
     procedure StartConsoleMode();
   protected
-    FStrList: TThreadList<string>;
     FCollectCounter: Integer;
 
     procedure OutputToConsole(Metric: TObject);
-    procedure SendMetric();
     procedure ConvertToStrFrom(Metric: TObject);
 
     function GetLocalMachineName(): string;
@@ -89,38 +75,13 @@ begin
     Exit();
   end;
 
-  StrList := FStrList.LockList();
+  StrList := TList<string>.Create();
   try
     Worker.RefilList<string>(StrList, MetricToStr4Graphite);
-    if StrList.Count > GetMaxStateCollectCount then
-    begin
-      StrList.DeleteRange(0, StrList.Count - GetMaxStateCollectCount);
-    end;
+    FSendThread.AddSendData(StrList);
   finally
-    FStrList.UnlockList();
+    FreeAndNil(StrList);
   end;
-end;
-
-function TPerfService.Func4Connected: TLoopState;
-begin
-  Result := lsNone;
-
-  if FLoopCount * INTERVAL < FSendIntervalMSec then
-  begin
-    Inc(FLoopCount);
-  end
-  else
-  begin
-    SendMetric();
-    FLoopCount := 0;
-  end;
-end;
-
-function TPerfService.Func4DisConnected: TLoopState;
-begin
-  Result := lsNone;
-
-  IdUDPClient1.Connect;
 end;
 
 function TPerfService.MetricToStr4Graphite(Metric: TCollectedMetric;
@@ -171,7 +132,7 @@ begin
     Exit();
   end;
 
-  StrList := FStrList.LockList();
+  StrList := TList<string>.Create();
   try
     Worker.RefilList<string>(StrList, MetricToStr4Graphite);
 
@@ -184,7 +145,7 @@ begin
         end);
     end;
   finally
-    FStrList.UnlockList();
+    FreeAndNil(StrList);
   end;
 end;
 
@@ -255,33 +216,6 @@ begin
   Result := ServiceController;
 end;
 
-procedure TPerfService.IdUDPClient1Connected(Sender: TObject);
-begin
-  FLoopFunc := Func4Connected;
-end;
-
-procedure TPerfService.IdUDPClient1Disconnected(Sender: TObject);
-begin
-  FLoopFunc := Func4DisConnected;
-end;
-
-procedure TPerfService.SendMetric;
-var
-  StrList: TList<string>;
-  CurrentStr: string;
-begin
-  StrList := FStrList.LockList();
-  try
-    for CurrentStr in StrList do
-    begin
-      IdUDPClient1.Send(CurrentStr);
-    end;
-    StrList.Clear();
-  finally
-    FStrList.UnlockList();
-  end;
-end;
-
 procedure TPerfService.ServiceContinue(Sender: TService;
 var Continued: Boolean);
 begin
@@ -296,11 +230,9 @@ begin
     + 'perf.log');
   FComputerName := GetLocalMachineName();
   FCollectThread := nil;
-  FStrList := nil;
+  FSendThread := nil;
 
   FIsConsoleMode := SameStr(ParamStr(1), '--console');
-  FStrList := TThreadList<string>.Create();
-  FCollectThread := TMetricsCollectorThread.Create();
   SetCollectSettingFrom(TPath.Combine(GetCurrentDir, 'config.xml'));
 
   if FIsConsoleMode then
@@ -313,24 +245,8 @@ procedure TPerfService.ServiceExecute(Sender: TService);
 var
   LoopState: TLoopState;
 begin
-  FLoopCount := 0;
   while not Terminated do
   begin
-    LoopState := lsNone;
-
-    if Assigned(FLoopFunc) then
-    begin
-      LoopState := FLoopFunc();
-    end;
-
-    case LoopState of
-      lsNone:
-        ;
-      lsContinue:
-        Continue;
-      lsExit:
-        Exit;
-    end;
 
     Sleep(INTERVAL);
     ServiceThread.ProcessRequests(False);
@@ -348,8 +264,7 @@ procedure TPerfService.ServiceStart(Sender: TService; var Started: Boolean);
 begin
   TFile.AppendAllText(FLogFileName, 'START' + sLineBreak, TEncoding.UTF8);
 
-  IdUDPClient1.Connect();
-
+  FSendThread.Start();
   FCollectThread.Start();
   Started := True;
 end;
@@ -359,7 +274,6 @@ begin
   FCollectThread.Terminate();
   FreeAndNil(FCollectThread);
 
-  FreeAndNil(FStrList);
   TFile.AppendAllText(FLogFileName, 'STOP' + sLineBreak, TEncoding.UTF8);
 
   Stopped := True;
@@ -369,7 +283,7 @@ procedure TPerfService.SetCollectSettingFrom(const ConfigFilePath: string);
 var
   ConfigXML: IXMLConfigurationType;
 begin
-  if not(Assigned(FCollectThread) and (Assigned(IdUDPClient1))) then
+  if not(Assigned(FCollectThread) and (Assigned(FSendThread))) then
   begin
     Exit();
   end;
@@ -400,6 +314,8 @@ var
   AddCounter: IXMLAddType;
   ii: Integer;
 begin
+  FCollectThread := TMetricsCollectorThread.Create();
+
   FCollectCounter := Carbonator.Counters.Count;
   for ii := 0 to FCollectCounter - 1 do
   begin
@@ -425,11 +341,9 @@ end;
 procedure TPerfService.SettingToUdpClientFrom(const Carbonator
   : IXMLCarbonatorType);
 begin
-  IdUDPClient1.Host := Carbonator.Graphite.Server;
-  IdUDPClient1.Port := Carbonator.Graphite.Port;
-  FSendIntervalMSec := Carbonator.ReportingInterval;
+  FSendThread := TTcpSendThread.Create(True, Carbonator.Graphite.Server, Carbonator.Graphite.Port, Carbonator.ReportingInterval, GetMaxStateCollectCount);
   TFile.AppendAllText(FLogFileName, 'SendIntervalMSec: ' +
-    IntToStr(FSendIntervalMSec) + sLineBreak, TEncoding.UTF8);
+    IntToStr(Carbonator.ReportingInterval) + sLineBreak, TEncoding.UTF8);
 end;
 
 procedure TPerfService.StartConsoleMode;
