@@ -80,6 +80,7 @@ constructor TTcpSendThread.Create(const CreateSuspended: Boolean;
   const HostAddr: string; HostPort, SendIntervalMSec, MaxStateCounter: Integer);
 begin
   inherited Create(CreateSuspended);
+  FreeOnTerminate := False;
   FSendIntervalMSec := 1000;
   FSender := nil;
   FSendStrList := nil;
@@ -155,7 +156,10 @@ function TTcpSendThread.Func4DisConnected: TLoopState;
 begin
   Result := lsNone;
 
-  FSender.Connect;
+  if not FSender.Connected then
+  begin
+    FSender.Connect;
+  end;
 end;
 
 procedure TTcpSendThread.SenderOnConnected(Sender: TObject);

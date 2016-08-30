@@ -22,6 +22,7 @@ type
     FCollectThread: TMetricsCollectorThread;
     FSendThread: TTcpSendThread;
 
+    FLogStream: TStreamWriter;
     FLogFileName: string;
     FComputerName: string;
 
@@ -30,11 +31,16 @@ type
     function GetMaxStateCollectCount: Integer;
 
     procedure StartConsoleMode();
+
+    function IsExistSubThreads(): Boolean;
+    function StartedSubThreads(): Boolean;
+    function StartSubThreads(): Boolean;
+    function FreeSubThreads(): Boolean;
   protected
     FCollectCounter: Integer;
 
     procedure OutputToConsole(Metric: TObject);
-    procedure ConvertToStrFrom(Metric: TObject);
+    procedure OutputToSender(Metric: TObject);
 
     function GetLocalMachineName(): string;
     function MetricToStr4Graphite(Metric: TCollectedMetric;
@@ -43,8 +49,8 @@ type
     procedure SettingToCollectThreadFrom(const Carbonator: IXMLCarbonatorType);
     function GetCollectMetricFrom(const AddCounter: IXMLAddType): string;
     function GetSendPathFrom(const AddCounter: IXMLAddType): string;
-  public
-    const INTERVAL = 100;
+  public const
+    INTERVAL = 100;
     function GetServiceController: TServiceController; override;
     procedure SetCollectSettingFrom(const ConfigFilePath: string);
     { Public êÈåæ }
@@ -65,7 +71,7 @@ begin
   PerfService.Controller(CtrlCode);
 end;
 
-procedure TPerfService.ConvertToStrFrom(Metric: TObject);
+procedure TPerfService.OutputToSender(Metric: TObject);
 var
   Worker: TMetricsCollectorThread;
   StrList: TList<string>;
@@ -78,6 +84,7 @@ begin
   StrList := TList<string>.Create();
   try
     Worker.RefilList<string>(StrList, MetricToStr4Graphite);
+
     FSendThread.AddSendData(StrList);
   finally
     FreeAndNil(StrList);
@@ -149,6 +156,16 @@ begin
   end;
 end;
 
+function TPerfService.FreeSubThreads(): Boolean;
+begin
+  FCollectThread.Terminate();
+  FreeAndNil(FCollectThread);
+  FSendThread.Terminate();
+  FreeAndNil(FSendThread);
+
+  Result := not IsExistSubThreads();
+end;
+
 function TPerfService.GetCollectMetricFrom(const AddCounter
   : IXMLAddType): string;
 var
@@ -174,7 +191,7 @@ end;
 
 function TPerfService.GetLocalMachineName: string;
 var
-  Size: DWORD;
+  Size: DWord;
 begin
   Result := EmptyStr;
 
@@ -216,10 +233,16 @@ begin
   Result := ServiceController;
 end;
 
+function TPerfService.IsExistSubThreads: Boolean;
+begin
+  Result := Assigned(FCollectThread) and Assigned(FSendThread);
+end;
+
 procedure TPerfService.ServiceContinue(Sender: TService;
 var Continued: Boolean);
 begin
-  FCollectThread.Resume();
+  SetCollectSettingFrom(TPath.Combine(GetCurrentDir, 'config.xml'));
+  Continued := StartSubThreads();
 end;
 
 procedure TPerfService.ServiceCreate(Sender: TObject);
@@ -229,10 +252,13 @@ begin
   FLogFileName := TPath.Combine(GetCurrentDir, FormatDateTime('yymmdd_', Now())
     + 'perf.log');
   FComputerName := GetLocalMachineName();
+
   FCollectThread := nil;
   FSendThread := nil;
+  FLogStream := nil;
 
-  FIsConsoleMode := SameStr(ParamStr(1), '--console');
+  FLogStream := TStreamWriter.Create(FLogFileName, True, TEncoding.UTF8);
+  FIsConsoleMode := FindCmdLineSwitch('console');
   SetCollectSettingFrom(TPath.Combine(GetCurrentDir, 'config.xml'));
 
   if FIsConsoleMode then
@@ -242,9 +268,8 @@ begin
 end;
 
 procedure TPerfService.ServiceExecute(Sender: TService);
-var
-  LoopState: TLoopState;
 begin
+  FLogStream.WriteLine('ServiceExecute');
   while not Terminated do
   begin
 
@@ -255,35 +280,30 @@ end;
 
 procedure TPerfService.ServicePause(Sender: TService; var Paused: Boolean);
 begin
-  FCollectThread.Suspend();
-
-  Paused := True;
+  Paused := FreeSubThreads();
 end;
 
 procedure TPerfService.ServiceStart(Sender: TService; var Started: Boolean);
 begin
-  TFile.AppendAllText(FLogFileName, 'START' + sLineBreak, TEncoding.UTF8);
+  Started := StartSubThreads();
 
-  FSendThread.Start();
-  FCollectThread.Start();
-  Started := True;
+  FLogStream.WriteLine('ServiceStart');
 end;
 
 procedure TPerfService.ServiceStop(Sender: TService; var Stopped: Boolean);
 begin
-  FCollectThread.Terminate();
-  FreeAndNil(FCollectThread);
+  Stopped := FreeSubThreads();
 
-  TFile.AppendAllText(FLogFileName, 'STOP' + sLineBreak, TEncoding.UTF8);
-
-  Stopped := True;
+  FLogStream.WriteLine('ServiceStop');
+  FLogStream.Flush();
+  FreeAndNil(FLogStream);
 end;
 
 procedure TPerfService.SetCollectSettingFrom(const ConfigFilePath: string);
 var
   ConfigXML: IXMLConfigurationType;
 begin
-  if not(Assigned(FCollectThread) and (Assigned(FSendThread))) then
+  if IsExistSubThreads() then
   begin
     Exit();
   end;
@@ -293,16 +313,15 @@ begin
     CoInitialize(nil);
     try
       ConfigXML := Loadconfiguration(ConfigFilePath);
-      SettingToUdpClientFrom(ConfigXML.Carbonator);
       SettingToCollectThreadFrom(ConfigXML.Carbonator);
+      SettingToUdpClientFrom(ConfigXML.Carbonator);
     finally
       CoUninitialize
     end;
   except
     on E: Exception do
     begin
-      TFile.AppendAllText(FLogFileName, 'Error' + E.Message + sLineBreak,
-        TEncoding.UTF8);
+      FLogStream.WriteLine('Error' + E.Message);
       raise E;
     end;
   end;
@@ -323,8 +342,8 @@ begin
     FCollectThread.AddCounter(GetCollectMetricFrom(AddCounter),
       GetSendPathFrom(AddCounter));
   end;
-  TFile.AppendAllText(FLogFileName, 'CollectionInterval: ' +
-    IntToStr(Carbonator.CollectionInterval) + sLineBreak, TEncoding.UTF8);
+  FLogStream.WriteLine('CollectionInterval: ' +
+    IntToStr(Carbonator.CollectionInterval));
 
   if FIsConsoleMode then
   begin
@@ -334,16 +353,20 @@ begin
   else
   begin
     FCollectThread.SetIntervalEvent(Carbonator.CollectionInterval,
-      ConvertToStrFrom);
+      OutputToSender);
   end;
 end;
 
 procedure TPerfService.SettingToUdpClientFrom(const Carbonator
   : IXMLCarbonatorType);
 begin
-  FSendThread := TTcpSendThread.Create(True, Carbonator.Graphite.Server, Carbonator.Graphite.Port, Carbonator.ReportingInterval, GetMaxStateCollectCount);
-  TFile.AppendAllText(FLogFileName, 'SendIntervalMSec: ' +
-    IntToStr(Carbonator.ReportingInterval) + sLineBreak, TEncoding.UTF8);
+  FSendThread := TTcpSendThread.Create(True, Carbonator.Graphite.Server,
+    Carbonator.Graphite.Port, Carbonator.ReportingInterval,
+    GetMaxStateCollectCount);
+
+  FLogStream.WriteLine('SendIntervalMSec: ' +
+    IntToStr(Carbonator.ReportingInterval));
+  FLogStream.WriteLine(Carbonator.Graphite.Server);
 end;
 
 procedure TPerfService.StartConsoleMode;
@@ -357,6 +380,27 @@ begin
   finally
     FreeConsole;
   end;
+end;
+
+function TPerfService.StartedSubThreads: Boolean;
+begin
+  Result := FCollectThread.Started and FSendThread.Started;
+end;
+
+function TPerfService.StartSubThreads: Boolean;
+begin
+  FLogStream.WriteLine('[begin] StartSubThreads');
+  Result := False;
+  if IsExistSubThreads then
+  begin
+    FLogStream.WriteLine('     ExistSubThreads');
+    FSendThread.Start;
+    FCollectThread.Start;
+    Sleep(100);
+    Result := StartedSubThreads();
+  end;
+    FLogStream.WriteLine('     Result: ' + BoolToStr(Result, True));
+  FLogStream.WriteLine('[end] StartSubThreads');
 end;
 
 end.

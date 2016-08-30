@@ -90,7 +90,7 @@
         <DCC_DebugInformation>0</DCC_DebugInformation>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2_Win32)'!=''">
-        <Debugger_RunParams>--console</Debugger_RunParams>
+        <Debugger_RunParams>-console</Debugger_RunParams>
         <AppEnableHighDPI>true</AppEnableHighDPI>
         <AppEnableRuntimeThemes>true</AppEnableRuntimeThemes>
     </PropertyGroup>
