@@ -7,10 +7,12 @@ uses
   Vcl.Graphics, Vcl.Controls, Vcl.SvcMgr, Vcl.Dialogs, System.SyncObjs,
   System.Generics.Collections, System.DateUtils, System.StrUtils,
   System.IOUtils, config, Winapi.ActiveX,
-  CollectMetric, TcpSendThread;
+  CollectMetric, TcpSendThread, Xml.xmldom, Xml.XMLIntf, Xml.Win.msxmldom,
+  Xml.XMLDoc;
 
 type
   TPerfService = class(TService)
+    Config: TXMLDocument;
     procedure ServiceCreate(Sender: TObject);
     procedure ServiceStart(Sender: TService; var Started: Boolean);
     procedure ServiceStop(Sender: TService; var Stopped: Boolean);
@@ -23,12 +25,9 @@ type
     FSendThread: TTcpSendThread;
 
     FLogStream: TStreamWriter;
-    FLogFileName: string;
     FComputerName: string;
 
     FIsConsoleMode: Boolean;
-
-    function GetMaxStateCollectCount: Integer;
 
     procedure StartConsoleMode();
 
@@ -37,7 +36,6 @@ type
     function StartSubThreads(): Boolean;
     function FreeSubThreads(): Boolean;
   protected
-    FCollectCounter: Integer;
 
     procedure OutputToConsole(Metric: TObject);
     procedure OutputToSender(Metric: TObject);
@@ -52,7 +50,7 @@ type
   public const
     INTERVAL = 100;
     function GetServiceController: TServiceController; override;
-    procedure SetCollectSettingFrom(const ConfigFilePath: string);
+    procedure SetCollectSettingFrom(const ConfigXML: TXMLDocument);
     { Public êÈåæ }
   end;
 
@@ -206,11 +204,6 @@ begin
   SetLength(Result, Size);
 end;
 
-function TPerfService.GetMaxStateCollectCount: Integer;
-begin
-  Result := 1000 * FCollectCounter;
-end;
-
 function TPerfService.GetSendPathFrom(const AddCounter: IXMLAddType): string;
 var
   Instance: string;
@@ -241,15 +234,16 @@ end;
 procedure TPerfService.ServiceContinue(Sender: TService;
 var Continued: Boolean);
 begin
-  SetCollectSettingFrom(TPath.Combine(GetCurrentDir, 'config.xml'));
+  SetCollectSettingFrom(Config);
   Continued := StartSubThreads();
 end;
 
 procedure TPerfService.ServiceCreate(Sender: TObject);
+var
+  LogFileName: string;
 begin
-  FCollectCounter := 0;
   SetCurrentDir(ExtractFileDir(ParamStr(0)));
-  FLogFileName := TPath.Combine(GetCurrentDir, FormatDateTime('yymmdd_', Now())
+  LogFileName := TPath.Combine(GetCurrentDir, FormatDateTime('yymmdd_', Now())
     + 'perf.log');
   FComputerName := GetLocalMachineName();
 
@@ -257,12 +251,15 @@ begin
   FSendThread := nil;
   FLogStream := nil;
 
-  FLogStream := TStreamWriter.Create(FLogFileName, True, TEncoding.UTF8);
+  FLogStream := TStreamWriter.Create(LogFileName, True, TEncoding.UTF8);
   FIsConsoleMode := FindCmdLineSwitch('console');
-  SetCollectSettingFrom(TPath.Combine(GetCurrentDir, 'config.xml'));
+  SetCollectSettingFrom(Config);
 
   if FIsConsoleMode then
   begin
+    {$IFDEF DEBUG}
+    ReportMemoryLeaksOnShutdown := True;
+    {$ENDIF}
     StartConsoleMode();
   end;
 end;
@@ -299,25 +296,20 @@ begin
   FreeAndNil(FLogStream);
 end;
 
-procedure TPerfService.SetCollectSettingFrom(const ConfigFilePath: string);
+procedure TPerfService.SetCollectSettingFrom(const ConfigXML: TXMLDocument);
 var
-  ConfigXML: IXMLConfigurationType;
+  Config: IXMLConfigurationType;
 begin
   if IsExistSubThreads() then
   begin
     Exit();
   end;
 
-  ConfigXML := nil;
+  Config := nil;
   try
-    CoInitialize(nil);
-    try
-      ConfigXML := Loadconfiguration(ConfigFilePath);
-      SettingToCollectThreadFrom(ConfigXML.Carbonator);
-      SettingToUdpClientFrom(ConfigXML.Carbonator);
-    finally
-      CoUninitialize
-    end;
+      Config := Getconfiguration(ConfigXML);
+      SettingToCollectThreadFrom(Config.Carbonator);
+      SettingToUdpClientFrom(Config.Carbonator);
   except
     on E: Exception do
     begin
@@ -332,11 +324,12 @@ procedure TPerfService.SettingToCollectThreadFrom(const Carbonator
 var
   AddCounter: IXMLAddType;
   ii: Integer;
+  Count: Integer;
 begin
   FCollectThread := TMetricsCollectorThread.Create();
 
-  FCollectCounter := Carbonator.Counters.Count;
-  for ii := 0 to FCollectCounter - 1 do
+  Count := Carbonator.Counters.Count;
+  for ii := 0 to Count - 1 do
   begin
     AddCounter := Carbonator.Counters[ii];
     FCollectThread.AddCounter(GetCollectMetricFrom(AddCounter),
@@ -362,7 +355,7 @@ procedure TPerfService.SettingToUdpClientFrom(const Carbonator
 begin
   FSendThread := TTcpSendThread.Create(True, Carbonator.Graphite.Server,
     Carbonator.Graphite.Port, Carbonator.ReportingInterval,
-    GetMaxStateCollectCount);
+    Carbonator.Counters.Count * 1000);
 
   FLogStream.WriteLine('SendIntervalMSec: ' +
     IntToStr(Carbonator.ReportingInterval));
