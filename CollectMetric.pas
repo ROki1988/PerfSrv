@@ -124,7 +124,7 @@ begin
     for ii := 0 to hCounters.Count - 1 do
     begin
       ZeroMemory(@CurrentValue, SizeOf(TPdhFmtCounterValue));
-      PdhGetFormattedCounterValue(hCounters[ii], PDH_FMT_LONG, nil,
+      PdhGetFormattedCounterValue(hCounters[ii], PDH_FMT_DOUBLE, nil,
         CurrentValue);
       FCollectedMetricList.Add(TCollectedMetric.Create(FCounterPathPairs[ii]
         .Value, CurrentValue));
@@ -195,7 +195,7 @@ begin
 
       if Assigned(ExportList) and Assigned(AConvertFunc) then
       begin
-        ExportList.Add(AConvertFunc(Metrics[ii], pftLong))
+        ExportList.Add(AConvertFunc(Metrics[ii], pftDouble))
       end;
 
       Metrics[ii].Free;
