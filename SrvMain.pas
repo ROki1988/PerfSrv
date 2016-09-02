@@ -60,7 +60,7 @@ var
 implementation
 
 uses
-  ObjectUtils;
+  ObjectUtils, IdGlobal;
 
 {$R *.dfm}
 
@@ -355,7 +355,7 @@ procedure TPerfService.SettingToUdpClientFrom(const Carbonator
 begin
   FSendThread := TTcpSendThread.Create(True, Carbonator.Graphite.Server,
     Carbonator.Graphite.Port, Carbonator.ReportingInterval,
-    Carbonator.Counters.Count * 1000);
+    Carbonator.Counters.Count * 1000, encASCII);
 
   FLogStream.WriteLine('SendIntervalMSec: ' +
     IntToStr(Carbonator.ReportingInterval));

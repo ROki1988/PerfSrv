@@ -3,7 +3,9 @@ unit TcpSendThread;
 interface
 
 uses
-  System.Classes, System.SysUtils, Generics.Collections, IdBaseComponent, IdComponent, IdUDPBase, IdUDPClient;
+  System.Classes, System.SysUtils, Generics.Collections, IdBaseComponent,
+  IdComponent, IdUDPBase, IdUDPClient,
+  System.StrUtils, IdGlobal;
 
 type
   TLoopState = (lsNone, lsContinue, lsExit);
@@ -15,6 +17,7 @@ type
     FSendIntervalMSec: Integer;
     FSender: TIdUDPClient;
     FMaxStateCounter: Integer;
+    FEncodeType: IdTextEncodingType;
 
     FLoopFunc: function: TLoopState of object;
     FLoopCount: Integer;
@@ -26,11 +29,14 @@ type
 
     procedure SenderOnConnected(Sender: TObject);
     procedure SenderOnDisconnected(Sender: TObject);
-    const INTERVAL = 100;
+
+  const
+    INTERVAL = 100;
   protected
     procedure Execute(); override;
   public
-    constructor Create(const CreateSuspended: Boolean; const HostAddr: string; HostPort: Integer; SendIntervalMSec: Integer; MaxStateCounter: Integer);
+    constructor Create(const CreateSuspended: Boolean;
+  const HostAddr: string; HostPort, SendIntervalMSec, MaxStateCounter: Integer; const EncodeType: IdTextEncodingType);
     destructor Destroy; override;
     procedure AddSendData(const Data: string); overload;
     procedure AddSendData(const Data: TList<string>); overload;
@@ -77,7 +83,7 @@ begin
 end;
 
 constructor TTcpSendThread.Create(const CreateSuspended: Boolean;
-  const HostAddr: string; HostPort, SendIntervalMSec, MaxStateCounter: Integer);
+  const HostAddr: string; HostPort, SendIntervalMSec, MaxStateCounter: Integer; const EncodeType: IdTextEncodingType);
 begin
   inherited Create(CreateSuspended);
   FreeOnTerminate := False;
@@ -92,6 +98,7 @@ begin
   FSender.Host := HostAddr;
   FSender.Port := HostPort;
   FMaxStateCounter := MaxStateCounter;
+  FEncodeType := EncodeType;
 
   FSender.OnConnected := SenderOnConnected;
   FSender.OnDisconnected := SenderOnDisconnected;
@@ -135,7 +142,6 @@ begin
   end;
 end;
 
-
 function TTcpSendThread.Func4Connected: TLoopState;
 begin
   Result := lsNone;
@@ -150,7 +156,6 @@ begin
     FLoopCount := 0;
   end;
 end;
-
 
 function TTcpSendThread.Func4DisConnected: TLoopState;
 begin
@@ -181,7 +186,7 @@ begin
   try
     for CurrentStr in StrList do
     begin
-      FSender.Send(CurrentStr);
+      FSender.Send(CurrentStr, IndyTextEncoding(FEncodeType));
     end;
     StrList.Clear();
   finally
