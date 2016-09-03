@@ -37,7 +37,6 @@ type
     function FreeSubThreads(): Boolean;
   protected
 
-    procedure OutputToConsole(Metric: TObject);
     procedure OutputToSender(Metric: TObject);
 
     function GetLocalMachineName(): string;
@@ -84,6 +83,15 @@ begin
     Worker.RefilList<string>(StrList, MetricToStr4Graphite);
 
     FSendThread.AddSendData(StrList);
+    if FIsConsoleMode then
+    begin
+      TThread.Synchronize(nil,
+        procedure
+        begin
+          Write(Output, string.Join(EmptyStr, StrList.ToArray));
+        end
+      );
+    end;
   finally
     FreeAndNil(StrList);
   end;
@@ -93,27 +101,27 @@ function TPerfService.MetricToStr4Graphite(Metric: TCollectedMetric;
   FmtType: TPdhFmtType): string;
 var
   UnixTime: Int64;
+  S: string;
 begin
   Result := EmptyStr;
   UnixTime := 0;
   with Metric do
   begin
     UnixTime := DateTimeToUnix(CollectedDateTime, False);
+    S := EmptyStr;
     case FmtType of
       pftRaw:
         ;
       pftAnsi:
-        Result := Format('%s %s %d', [SendPath, Metric.AnsiStringValue,
-          UnixTime]);
+        S := string(Metric.AnsiStringValue);
       pftUnicode:
-        Result := Format('%s %s %d', [SendPath, Metric.WideStringValue,
-          UnixTime]);
+        S := Metric.WideStringValue;
       pftLong:
-        Result := Format('%s %d %d', [SendPath, Metric.longValue, UnixTime]);
+        S := IntToStr(Metric.longValue);
       pftDouble:
-        Result := Format('%s %f %d', [SendPath, Metric.doubleValue, UnixTime]);
+        S := FloatToStr(Metric.doubleValue);
       pftLarge:
-        Result := Format('%s %d %d', [SendPath, Metric.largeValue, UnixTime]);
+        S := IntToStr(Metric.largeValue);
       pftNoscale:
         ;
       pft1000:
@@ -123,34 +131,7 @@ begin
       pftNocap100:
         ;
     end;
-  end;
-end;
-
-procedure TPerfService.OutputToConsole(Metric: TObject);
-var
-  Worker: TMetricsCollectorThread;
-  StrList: TList<string>;
-  CurrentStr: string;
-begin
-  if not TObject.TryCastTo(Metric, Worker) then
-  begin
-    Exit();
-  end;
-
-  StrList := TList<string>.Create();
-  try
-    Worker.RefilList<string>(StrList, MetricToStr4Graphite);
-
-    for CurrentStr in StrList do
-    begin
-      TThread.Synchronize(nil,
-        procedure
-        begin
-          Writeln(Output, CurrentStr);
-        end);
-    end;
-  finally
-    FreeAndNil(StrList);
+    Result :=  string.join(' ', [SendPath, S, UnixTime.ToString]) + #10;
   end;
 end;
 
@@ -307,9 +288,9 @@ begin
 
   Config := nil;
   try
-      Config := Getconfiguration(ConfigXML);
-      SettingToCollectThreadFrom(Config.Carbonator);
-      SettingToUdpClientFrom(Config.Carbonator);
+    Config := Getconfiguration(ConfigXML);
+    SettingToCollectThreadFrom(Config.Carbonator);
+    SettingToUdpClientFrom(Config.Carbonator);
   except
     on E: Exception do
     begin
@@ -338,16 +319,8 @@ begin
   FLogStream.WriteLine('CollectionInterval: ' +
     IntToStr(Carbonator.CollectionInterval));
 
-  if FIsConsoleMode then
-  begin
-    FCollectThread.SetIntervalEvent(Carbonator.CollectionInterval,
-      OutputToConsole);
-  end
-  else
-  begin
-    FCollectThread.SetIntervalEvent(Carbonator.CollectionInterval,
-      OutputToSender);
-  end;
+  FCollectThread.SetIntervalEvent(Carbonator.CollectionInterval,
+    OutputToSender);
 end;
 
 procedure TPerfService.SettingToUdpClientFrom(const Carbonator
@@ -367,9 +340,9 @@ begin
   AllocConsole;
   try
     Writeln(Output, DateTimeToStr(Now()));
-    FCollectThread.Start;
-    FCollectThread.WaitFor;
+    StartSubThreads();
 
+    FCollectThread.WaitFor();
   finally
     FreeConsole;
   end;
