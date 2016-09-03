@@ -50,8 +50,6 @@ procedure TTcpSendThread.AddSendData(const Data: string);
 var
   StrList: TList<string>;
 begin
-  StrList := nil;
-
   StrList := FSendStrList.LockList();
   try
     StrList.Add(Data);
@@ -68,8 +66,6 @@ procedure TTcpSendThread.AddSendData(const Data: TList<string>);
 var
   StrList: TList<string>;
 begin
-  StrList := nil;
-
   StrList := FSendStrList.LockList();
   try
     StrList.AddRange(Data);
