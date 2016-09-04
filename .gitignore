@@ -90,3 +90,7 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
+Test/Win32/
+*.log
+*.zip
+config.xml
