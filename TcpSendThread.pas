@@ -35,8 +35,9 @@ type
   protected
     procedure Execute(); override;
   public
-    constructor Create(const CreateSuspended: Boolean;
-  const HostAddr: string; HostPort, SendIntervalMSec, MaxStateCounter: Integer; const EncodeType: IdTextEncodingType);
+    constructor Create(const CreateSuspended: Boolean; const HostAddr: string;
+      HostPort, SendIntervalMSec, MaxStateCounter: Integer;
+      const EncodeType: IdTextEncodingType);
     destructor Destroy; override;
     procedure AddSendData(const Data: string); overload;
     procedure AddSendData(const Data: TList<string>); overload;
@@ -79,7 +80,8 @@ begin
 end;
 
 constructor TTcpSendThread.Create(const CreateSuspended: Boolean;
-  const HostAddr: string; HostPort, SendIntervalMSec, MaxStateCounter: Integer; const EncodeType: IdTextEncodingType);
+  const HostAddr: string; HostPort, SendIntervalMSec, MaxStateCounter: Integer;
+  const EncodeType: IdTextEncodingType);
 begin
   inherited Create(CreateSuspended);
   FreeOnTerminate := False;
