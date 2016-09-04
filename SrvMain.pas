@@ -382,6 +382,7 @@ begin
     FLogStream.WriteLine('     ExistSubThreads');
     FSendThread.Start;
     FCollectThread.Start;
+    Sleep(100);
 
     Result := StartedSubThreads();
   end;
