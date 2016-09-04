@@ -42,50 +42,51 @@ type
     function GetLocalMachineName(): string;
 
     /// <remarks>
-    ///   メトリクスから graphite フォーマットへの変換仕様
+    /// メトリクスから graphite フォーマットへの変換仕様
     /// </remarks>
     /// <param name="Metric">
-    ///   取得されたメトリクス
+    /// 取得されたメトリクス
     /// </param>
     /// <param name="FmtType">
-    ///   パラメータのタイプ
+    /// パラメータのタイプ
     /// </param>
     /// <returns>
-    ///   graphite フォーマットの文字列
+    /// graphite フォーマットの文字列
     /// </returns>
     function MetricToStr4Graphite(Metric: TCollectedMetric;
       FmtType: TPdhFmtType): string;
 
-
     /// <remarks>
-    ///   設定ファイルにそったサブスレッドを生成する
+    /// 設定ファイルにそったサブスレッドを生成する
     /// </remarks>
     /// <param name="ConfigXML">
-    ///   設定が書かれたxml
+    /// 設定が書かれたxml
     /// </param>
     procedure InitSubThreadsFrom(const ConfigXML: TXMLDocument);
 
     /// <remarks>
-    ///   通信スレッドの生成処理
+    /// 通信スレッドの生成処理
     /// </remarks>
     /// <param name="Carbonator">
-    ///   設定が書かれたxml
+    /// 設定が書かれたxml
     /// </param>
     /// <returns>
-    ///   通信スレッド
+    /// 通信スレッド
     /// </returns>
-    function CreateUdpClientFrom(const Carbonator: IXMLCarbonatorType): TTcpSendThread;
+    function CreateUdpClientFrom(const Carbonator: IXMLCarbonatorType)
+      : TTcpSendThread;
 
     /// <remarks>
-    ///   パフォーマンス取得スレッドの生成処理
+    /// パフォーマンス取得スレッドの生成処理
     /// </remarks>
     /// <param name="Carbonator">
-    ///   設定が書かれたxml
+    /// 設定が書かれたxml
     /// </param>
     /// <returns>
-    ///   パフォーマンス取得スレッド
+    /// パフォーマンス取得スレッド
     /// </returns>
-    function CreateCollectThreadFrom(const Carbonator: IXMLCarbonatorType): TMetricsCollectorThread;
+    function CreateCollectThreadFrom(const Carbonator: IXMLCarbonatorType)
+      : TMetricsCollectorThread;
     function GetSendPathFrom(const AddCounter: IXMLAddType): string;
   public
     function GetServiceController: TServiceController; override;
@@ -332,18 +333,17 @@ begin
   for ii := 0 to Count - 1 do
   begin
     AddCounter := Carbonator.Counters[ii];
-    Result.AddCounter(AddCounter.Category, AddCounter.Counter, AddCounter.Instance,
-      GetSendPathFrom(AddCounter));
+    Result.AddCounter(AddCounter.Category, AddCounter.Counter,
+      AddCounter.Instance, GetSendPathFrom(AddCounter));
   end;
-  Result.SetIntervalEvent(Carbonator.CollectionInterval,
-    OutputToSender);
+  Result.SetIntervalEvent(Carbonator.CollectionInterval, OutputToSender);
 
   FLogStream.WriteLine('CollectionInterval: ' +
     IntToStr(Carbonator.CollectionInterval));
 end;
 
-function TPerfService.CreateUdpClientFrom(const Carbonator
-  : IXMLCarbonatorType): TTcpSendThread;
+function TPerfService.CreateUdpClientFrom(const Carbonator: IXMLCarbonatorType)
+  : TTcpSendThread;
 begin
   Result := nil;
   Result := TTcpSendThread.Create(True, Carbonator.Graphite.Server,

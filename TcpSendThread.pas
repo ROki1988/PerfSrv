@@ -35,11 +35,46 @@ type
   protected
     procedure Execute(); override;
   public
+    /// <summary>
+    /// コンストラクタ
+    /// </summary>
+    /// <param name="CreateSuspended">
+    /// 停止状態で作るか
+    /// </param>
+    /// <param name="HostAddr">
+    ///   送信先アドレス
+    /// </param>
+    /// <param name="HostPort">
+    ///   送信先ポート
+    /// </param>
+    /// <param name="SendIntervalMSec">
+    ///   送信周期
+    /// </param>
+    /// <param name="MaxStateCounter">
+    ///   最大保持数
+    /// </param>
+    /// <param name="EncodeType">
+    ///   送信エンコード
+    /// </param>
     constructor Create(const CreateSuspended: Boolean; const HostAddr: string;
       HostPort, SendIntervalMSec, MaxStateCounter: Integer;
       const EncodeType: IdTextEncodingType);
     destructor Destroy; override;
+
+    /// <summary>
+    /// 送信待ちリストへの追加
+    /// </summary>
+    /// <param name="Data">
+    /// 送信したい文字列
+    /// </param>
     procedure AddSendData(const Data: string); overload;
+
+    /// <summary>
+    /// 送信待ちリストへの追加
+    /// </summary>
+    /// <param name="Data">
+    /// 送信したい文字列リスト
+    /// </param>
     procedure AddSendData(const Data: TList<string>); overload;
   end;
 

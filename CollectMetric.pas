@@ -18,23 +18,23 @@ type
     FMetric: TPdhFmtCounterValue;
     FSendPath: string;
   private
-      constructor Create(const ASendPath: string;
+    constructor Create(const ASendPath: string;
       const AMetric: TPdhFmtCounterValue);
   public
-    /// <remarks>
-    ///   取得日時
-    /// </remarks>
+    /// <summary>
+    /// 取得日時
+    /// </summary>
     property CollectedDateTime: TDateTime read FCollectedDateTime;
 
-    /// <remarks>
-    ///   送信用パス
-    ///  ここに内容が良いけど･･･
-    /// </remarks>
+    /// <summary>
+    /// 送信用パス;
+    /// ここにないほうが良いけど･･･
+    /// </summary>
     property SendPath: string read FSendPath;
 
-    /// <remarks>
-    ///   取得したメトリクス
-    /// </remarks>
+    /// <summary>
+    /// 取得したメトリクス
+    /// </summary>
     property Metric: TPdhFmtCounterValue read FMetric;
   end;
 
@@ -53,51 +53,52 @@ type
   protected
     FCounterPathPairs: TList<TPair<string, string>>;
 
-    function GetCollectMetricFrom(const Category, Counter, Instance
-      : string): string;
+    function GetCollectMetricFrom(const Category, Counter,
+      Instance: string): string;
 
     procedure Execute(); override;
   public
     constructor Create();
     destructor Destroy; override;
 
-    /// <remarks>
-    ///   スレッド内の定期処理設定
-    /// </remarks>
+    /// <summary>
+    /// スレッド内の定期処理設定
+    /// </summary>
     /// <param name="AIntervalMilSec">
-    ///   イベントの実行周期
+    /// イベントの実行周期
     /// </param>
     /// <param name="AIntervalEvent">
-    ///   イベント
+    /// イベント
     /// </param>
     procedure SetIntervalEvent(AIntervalMilSec: Integer;
       AIntervalEvent: TNotifyEvent);
 
-    /// <remarks>
-    ///   取得したいカウンターを追加する
-    /// </remarks>
+    /// <summary>
+    /// 取得したいカウンターを追加する
+    /// </summary>
     /// <param name="Category">
-    ///   カテゴリー ex)  Processor
+    /// カテゴリー ex)  Processor
     /// </param>
     /// <param name="Counter">
-    ///   カウンター ex) % Processor Time
+    /// カウンター ex) % Processor Time
     /// </param>
     /// <param name="Instance">
-    ///   インスタンス名 ex) _Total
+    /// インスタンス名 ex) _Total
     /// </param>
     /// <param name="SendPath">
-    ///   送信パス
+    /// 送信パス
     /// </param>
-    procedure AddCounter(const Category: string; const Counter: string; const Instance: string; const SendPath: string);
+    procedure AddCounter(const Category: string; const Counter: string;
+      const Instance: string; const SendPath: string);
 
-    /// <remarks>
-    ///   取得したメトリクスの詰め替え関数
-    /// </remarks>
+    /// <summary>
+    /// 取得したメトリクスの詰め替え関数
+    /// </summary>
     /// <param name="ExportList">
-    ///   詰め替え先リスト
+    /// 詰め替え先リスト
     /// </param>
     /// <param name="AConvertFunc">
-    ///   変換仕様
+    /// 変換仕様
     /// </param>
     procedure RefilList<TTarget>(const ExportList: TList<TTarget>;
       AConvertFunc: TFunc<TCollectedMetric, TPdhFmtType, TTarget>);
@@ -117,7 +118,8 @@ end;
 
 { TMetricsCollectorThread }
 
-function TMetricsCollectorThread.GetCollectMetricFrom(const Category, Counter, Instance: string): string;
+function TMetricsCollectorThread.GetCollectMetricFrom(const Category, Counter,
+  Instance: string): string;
 var
   FixInstance: string;
   FixCounter: string;
@@ -142,7 +144,8 @@ end;
 procedure TMetricsCollectorThread.AddCounter(const Category, Counter, Instance,
   SendPath: string);
 begin
-  FCounterPathPairs.Add(TPair<string, string>.Create(GetCollectMetricFrom(Category, Counter, Instance), SendPath));
+  FCounterPathPairs.Add(TPair<string, string>.Create
+    (GetCollectMetricFrom(Category, Counter, Instance), SendPath));
 end;
 
 constructor TMetricsCollectorThread.Create();
