@@ -1,10 +1,10 @@
-{ *********************************** }
+ï»¿{ *********************************** }
 { }
-{ XML ƒf[ƒ^ƒoƒCƒ“ƒfƒBƒ“ƒO }
+{ XML ãƒ‡ãƒ¼ã‚¿ãƒã‚¤ãƒ³ãƒ‡ã‚£ãƒ³ã‚° }
 { }
-{ ì¬“úF 2016/04/19 0:42:30 }
-{ ì¬Œ³F Z:\config.xml }
-{ İ’èƒtƒ@ƒCƒ‹‚Ì•ÛŠÇæF Z:\config.xdb }
+{ ä½œæˆæ—¥ï¼š 2016/04/19 0:42:30 }
+{ ä½œæˆå…ƒï¼š Z:\config.xml }
+{ è¨­å®šãƒ•ã‚¡ã‚¤ãƒ«ã®ä¿ç®¡å…ˆï¼š Z:\config.xdb }
 { }
 { *********************************** }
 
@@ -12,11 +12,11 @@ unit config;
 
 interface
 
-uses xmldom, XMLDoc, XMLIntf;
+uses xmldom, XMLDoc, XMLIntf, System.Generics.Collections;
 
 type
 
-  { ‘O•ûéŒ¾ }
+  { å‰æ–¹å®£è¨€ }
 
   IXMLConfigurationType = interface;
   IXMLConfigSectionsType = interface;
@@ -40,9 +40,9 @@ type
 
   IXMLConfigurationType = interface(IXMLNode)
     ['{D5075BDB-268B-4047-9B80-1BC31EBD90ED}']
-    { ƒvƒƒpƒeƒBQÆŠÖ” }
+    { ãƒ—ãƒ­ãƒ‘ãƒ†ã‚£å‚ç…§é–¢æ•° }
     function Get_Carbonator: IXMLCarbonatorType;
-    { ƒƒ\ƒbƒh‚ÆƒvƒƒpƒeƒB }
+    { ãƒ¡ã‚½ãƒƒãƒ‰ã¨ãƒ—ãƒ­ãƒ‘ãƒ†ã‚£ }
     property Carbonator: IXMLCarbonatorType read Get_Carbonator;
   end;
 
@@ -50,9 +50,9 @@ type
 
   IXMLConfigSectionsType = interface(IXMLNodeCollection)
     ['{DCD164F6-7AC1-4404-BD15-C3CAC80B5B09}']
-    { ƒvƒƒpƒeƒBQÆŠÖ” }
+    { ãƒ—ãƒ­ãƒ‘ãƒ†ã‚£å‚ç…§é–¢æ•° }
     function Get_Section(Index: Integer): IXMLSectionType;
-    { ƒƒ\ƒbƒh‚ÆƒvƒƒpƒeƒB }
+    { ãƒ¡ã‚½ãƒƒãƒ‰ã¨ãƒ—ãƒ­ãƒ‘ãƒ†ã‚£ }
     function Add: IXMLSectionType;
     function Insert(const Index: Integer): IXMLSectionType;
     property Section[Index: Integer]: IXMLSectionType read Get_Section; default;
@@ -62,10 +62,10 @@ type
 
   IXMLSectionType = interface(IXMLNode)
     ['{019D7F46-4164-47F3-B12C-44AD3C57414F}']
-    { ƒvƒƒpƒeƒBQÆŠÖ” }
+    { ãƒ—ãƒ­ãƒ‘ãƒ†ã‚£å‚ç…§é–¢æ•° }
     function Get_Name: UnicodeString;
     function Get_Type_: UnicodeString;
-    { ƒƒ\ƒbƒh‚ÆƒvƒƒpƒeƒB }
+    { ãƒ¡ã‚½ãƒƒãƒ‰ã¨ãƒ—ãƒ­ãƒ‘ãƒ†ã‚£ }
     property Name: UnicodeString read Get_Name;
     property Type_: UnicodeString read Get_Type_;
   end;
@@ -74,7 +74,7 @@ type
 
   IXMLCarbonatorType = interface(IXMLNode)
     ['{FE988041-AFFF-42F5-BC45-B1566FE4C6A4}']
-    { ƒvƒƒpƒeƒBQÆŠÖ” }
+    { ãƒ—ãƒ­ãƒ‘ãƒ†ã‚£å‚ç…§é–¢æ•° }
     function Get_DefaultCulture: UnicodeString;
     function Get_LogLevel: Integer;
     function Get_LogType: UnicodeString;
@@ -82,7 +82,7 @@ type
     function Get_ReportingInterval: Integer;
     function Get_Graphite: IXMLGraphiteType;
     function Get_Counters: IXMLCountersType;
-    { ƒƒ\ƒbƒh‚ÆƒvƒƒpƒeƒB }
+    { ãƒ¡ã‚½ãƒƒãƒ‰ã¨ãƒ—ãƒ­ãƒ‘ãƒ†ã‚£ }
     property DefaultCulture: UnicodeString read Get_DefaultCulture;
     property LogLevel: Integer read Get_LogLevel;
     property LogType: UnicodeString read Get_LogType;
@@ -96,10 +96,10 @@ type
 
   IXMLGraphiteType = interface(IXMLNode)
     ['{3108A2FB-488A-440F-974F-C14EDDF47F9E}']
-    { ƒvƒƒpƒeƒBQÆŠÖ” }
+    { ãƒ—ãƒ­ãƒ‘ãƒ†ã‚£å‚ç…§é–¢æ•° }
     function Get_Server: UnicodeString;
     function Get_Port: Integer;
-    { ƒƒ\ƒbƒh‚ÆƒvƒƒpƒeƒB }
+    { ãƒ¡ã‚½ãƒƒãƒ‰ã¨ãƒ—ãƒ­ãƒ‘ãƒ†ã‚£ }
     property Server: UnicodeString read Get_Server;
     property Port: Integer read Get_Port;
   end;
@@ -108,9 +108,9 @@ type
 
   IXMLCountersType = interface(IXMLNodeCollection)
     ['{A6CF1607-DABC-44A4-A32B-CCCB2395D911}']
-    { ƒvƒƒpƒeƒBQÆŠÖ” }
+    { ãƒ—ãƒ­ãƒ‘ãƒ†ã‚£å‚ç…§é–¢æ•° }
     function Get_Add(Index: Integer): IXMLAddType;
-    { ƒƒ\ƒbƒh‚ÆƒvƒƒpƒeƒB }
+    { ãƒ¡ã‚½ãƒƒãƒ‰ã¨ãƒ—ãƒ­ãƒ‘ãƒ†ã‚£ }
     function Add: IXMLAddType;
     function Insert(const Index: Integer): IXMLAddType;
     property Add[Index: Integer]: IXMLAddType read Get_Add; default;
@@ -120,7 +120,7 @@ type
 
   IXMLAddType = interface(IXMLNode)
     ['{CE7B970F-3E99-4A73-B399-C16C8723A342}']
-    { ƒvƒƒpƒeƒBQÆŠÖ” }
+    { ãƒ—ãƒ­ãƒ‘ãƒ†ã‚£å‚ç…§é–¢æ•° }
     function Get_Path: UnicodeString;
     function Get_Category: UnicodeString;
     function Get_Counter: UnicodeString;
@@ -129,7 +129,7 @@ type
     procedure Set_Category(Value: UnicodeString);
     procedure Set_Counter(Value: UnicodeString);
     procedure Set_Instance(Value: UnicodeString);
-    { ƒƒ\ƒbƒh‚ÆƒvƒƒpƒeƒB }
+    { ãƒ¡ã‚½ãƒƒãƒ‰ã¨ãƒ—ãƒ­ãƒ‘ãƒ†ã‚£ }
     property Path: UnicodeString read Get_Path write Set_Path;
     property Category: UnicodeString read Get_Category write Set_Category;
     property Counter: UnicodeString read Get_Counter write Set_Counter;
@@ -140,13 +140,13 @@ type
 
   IXMLAppenderType = interface(IXMLNode)
     ['{F9165592-45FB-4474-BD62-170EB2708A87}']
-    { ƒvƒƒpƒeƒBQÆŠÖ” }
+    { ãƒ—ãƒ­ãƒ‘ãƒ†ã‚£å‚ç…§é–¢æ•° }
     function Get_Name: UnicodeString;
     function Get_Type_: UnicodeString;
     function Get_Threshold: IXMLThresholdType;
     function Get_Param: IXMLParamTypeList;
     function Get_Layout: IXMLLayoutType;
-    { ƒƒ\ƒbƒh‚ÆƒvƒƒpƒeƒB }
+    { ãƒ¡ã‚½ãƒƒãƒ‰ã¨ãƒ—ãƒ­ãƒ‘ãƒ†ã‚£ }
     property Name: UnicodeString read Get_Name;
     property Type_: UnicodeString read Get_Type_;
     property Threshold: IXMLThresholdType read Get_Threshold;
@@ -158,7 +158,7 @@ type
 
   IXMLAppenderTypeList = interface(IXMLNodeCollection)
     ['{9EEDCD63-FC14-43E3-B8E4-409028243D14}']
-    { ƒƒ\ƒbƒh‚ÆƒvƒƒpƒeƒB }
+    { ãƒ¡ã‚½ãƒƒãƒ‰ã¨ãƒ—ãƒ­ãƒ‘ãƒ†ã‚£ }
     function Add: IXMLAppenderType;
     function Insert(const Index: Integer): IXMLAppenderType;
 
@@ -170,9 +170,9 @@ type
 
   IXMLThresholdType = interface(IXMLNode)
     ['{DF6916EA-D728-416E-BD0C-379EDCF17C7D}']
-    { ƒvƒƒpƒeƒBQÆŠÖ” }
+    { ãƒ—ãƒ­ãƒ‘ãƒ†ã‚£å‚ç…§é–¢æ•° }
     function Get_Value: UnicodeString;
-    { ƒƒ\ƒbƒh‚ÆƒvƒƒpƒeƒB }
+    { ãƒ¡ã‚½ãƒƒãƒ‰ã¨ãƒ—ãƒ­ãƒ‘ãƒ†ã‚£ }
     property Value: UnicodeString read Get_Value;
   end;
 
@@ -180,10 +180,10 @@ type
 
   IXMLParamType = interface(IXMLNode)
     ['{7B224165-6E43-42E2-A5F0-BCBF018CDC81}']
-    { ƒvƒƒpƒeƒBQÆŠÖ” }
+    { ãƒ—ãƒ­ãƒ‘ãƒ†ã‚£å‚ç…§é–¢æ•° }
     function Get_Name: UnicodeString;
     function Get_Value: UnicodeString;
-    { ƒƒ\ƒbƒh‚ÆƒvƒƒpƒeƒB }
+    { ãƒ¡ã‚½ãƒƒãƒ‰ã¨ãƒ—ãƒ­ãƒ‘ãƒ†ã‚£ }
     property Name: UnicodeString read Get_Name;
     property Value: UnicodeString read Get_Value;
   end;
@@ -192,7 +192,7 @@ type
 
   IXMLParamTypeList = interface(IXMLNodeCollection)
     ['{DE1E73CE-5C60-43FB-8B82-D44A9BDF0952}']
-    { ƒƒ\ƒbƒh‚ÆƒvƒƒpƒeƒB }
+    { ãƒ¡ã‚½ãƒƒãƒ‰ã¨ãƒ—ãƒ­ãƒ‘ãƒ†ã‚£ }
     function Add: IXMLParamType;
     function Insert(const Index: Integer): IXMLParamType;
 
@@ -204,10 +204,10 @@ type
 
   IXMLLayoutType = interface(IXMLNodeCollection)
     ['{0B3A28E9-D844-4421-B693-7927D6414261}']
-    { ƒvƒƒpƒeƒBQÆŠÖ” }
+    { ãƒ—ãƒ­ãƒ‘ãƒ†ã‚£å‚ç…§é–¢æ•° }
     function Get_Type_: UnicodeString;
     function Get_Param(Index: Integer): IXMLParamType;
-    { ƒƒ\ƒbƒh‚ÆƒvƒƒpƒeƒB }
+    { ãƒ¡ã‚½ãƒƒãƒ‰ã¨ãƒ—ãƒ­ãƒ‘ãƒ†ã‚£ }
     function Add: IXMLParamType;
     function Insert(const Index: Integer): IXMLParamType;
     property Type_: UnicodeString read Get_Type_;
@@ -218,10 +218,10 @@ type
 
   IXMLRootType = interface(IXMLNode)
     ['{75858D57-121C-4699-B896-6A46A8E8D45D}']
-    { ƒvƒƒpƒeƒBQÆŠÖ” }
+    { ãƒ—ãƒ­ãƒ‘ãƒ†ã‚£å‚ç…§é–¢æ•° }
     function Get_Level: IXMLLevelType;
     function Get_Appenderref: IXMLAppenderrefTypeList;
-    { ƒƒ\ƒbƒh‚ÆƒvƒƒpƒeƒB }
+    { ãƒ¡ã‚½ãƒƒãƒ‰ã¨ãƒ—ãƒ­ãƒ‘ãƒ†ã‚£ }
     property Level: IXMLLevelType read Get_Level;
     property Appenderref: IXMLAppenderrefTypeList read Get_Appenderref;
   end;
@@ -230,9 +230,9 @@ type
 
   IXMLLevelType = interface(IXMLNode)
     ['{9926C05B-FC65-4377-BDB8-EACFEA2EFF6B}']
-    { ƒvƒƒpƒeƒBQÆŠÖ” }
+    { ãƒ—ãƒ­ãƒ‘ãƒ†ã‚£å‚ç…§é–¢æ•° }
     function Get_Value: UnicodeString;
-    { ƒƒ\ƒbƒh‚ÆƒvƒƒpƒeƒB }
+    { ãƒ¡ã‚½ãƒƒãƒ‰ã¨ãƒ—ãƒ­ãƒ‘ãƒ†ã‚£ }
     property Value: UnicodeString read Get_Value;
   end;
 
@@ -240,9 +240,9 @@ type
 
   IXMLAppenderrefType = interface(IXMLNode)
     ['{497AEFFB-E9C3-4AD6-B81C-C3936A1216D4}']
-    { ƒvƒƒpƒeƒBQÆŠÖ” }
+    { ãƒ—ãƒ­ãƒ‘ãƒ†ã‚£å‚ç…§é–¢æ•° }
     function Get_Ref: UnicodeString;
-    { ƒƒ\ƒbƒh‚ÆƒvƒƒpƒeƒB }
+    { ãƒ¡ã‚½ãƒƒãƒ‰ã¨ãƒ—ãƒ­ãƒ‘ãƒ†ã‚£ }
     property Ref: UnicodeString read Get_Ref;
   end;
 
@@ -250,7 +250,7 @@ type
 
   IXMLAppenderrefTypeList = interface(IXMLNodeCollection)
     ['{CEFE6FF1-07C3-4906-83AD-84FD69909AD3}']
-    { ƒƒ\ƒbƒh‚ÆƒvƒƒpƒeƒB }
+    { ãƒ¡ã‚½ãƒƒãƒ‰ã¨ãƒ—ãƒ­ãƒ‘ãƒ†ã‚£ }
     function Add: IXMLAppenderrefType;
     function Insert(const Index: Integer): IXMLAppenderrefType;
 
@@ -258,7 +258,7 @@ type
     property Items[Index: Integer]: IXMLAppenderrefType read Get_Item; default;
   end;
 
-  { ‘O•ûéŒ¾ }
+  { å‰æ–¹å®£è¨€ }
 
   TXMLConfigurationType = class;
   TXMLConfigSectionsType = class;
@@ -469,7 +469,7 @@ type
     function Get_Item(Index: Integer): IXMLAppenderrefType;
   end;
 
-  { ƒOƒ[ƒoƒ‹ŠÖ” }
+  { ã‚°ãƒ­ãƒ¼ãƒãƒ«é–¢æ•° }
 
 function Getconfiguration(Doc: IXMLDocument): IXMLConfigurationType;
 function Loadconfiguration(const FileName: string): IXMLConfigurationType;
@@ -480,7 +480,7 @@ const
 
 implementation
 
-{ ƒOƒ[ƒoƒ‹ŠÖ” }
+{ ã‚°ãƒ­ãƒ¼ãƒãƒ«é–¢æ•° }
 
 function Getconfiguration(Doc: IXMLDocument): IXMLConfigurationType;
 begin

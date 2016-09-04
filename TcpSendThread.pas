@@ -1,4 +1,4 @@
-unit TcpSendThread;
+﻿unit TcpSendThread;
 
 interface
 

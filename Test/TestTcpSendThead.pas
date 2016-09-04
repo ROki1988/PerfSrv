@@ -1,4 +1,4 @@
-unit TestTcpSendThead;
+﻿unit TestTcpSendThead;
 
 interface
 
@@ -26,11 +26,13 @@ type
 
 implementation
 
+uses
+  IdGlobal;
+
 procedure TTestTcpSendThead.Setup;
 begin
   FThread := nil;
-  FThread := TTcpSendThread.Create(True, 'localhost', 55056, 100, 100);
-  FThread.Start();
+  FThread := TTcpSendThread.Create(True, 'localhost', 55056, 100, 100, encASCII);
 end;
 
 procedure TTestTcpSendThead.TearDown;
@@ -42,7 +44,6 @@ end;
 procedure TTestTcpSendThead.Test1;
 begin
   FThread.AddSendData('Test');
-  Sleep(10000);
 end;
 
 initialization

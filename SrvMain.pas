@@ -1,4 +1,4 @@
-unit SrvMain;
+﻿unit SrvMain;
 
 interface
 
@@ -20,7 +20,7 @@ type
     procedure ServicePause(Sender: TService; var Paused: Boolean);
     procedure ServiceExecute(Sender: TService);
   private
-    { Private �錾 }
+    { Private 宣言 }
     FCollectThread: TMetricsCollectorThread;
     FSendThread: TTcpSendThread;
 
@@ -40,17 +40,56 @@ type
     procedure OutputToSender(Metric: TObject);
 
     function GetLocalMachineName(): string;
+
+    /// <remarks>
+    ///   メトリクスから graphite フォーマットへの変換仕様
+    /// </remarks>
+    /// <param name="Metric">
+    ///   取得されたメトリクス
+    /// </param>
+    /// <param name="FmtType">
+    ///   パラメータのタイプ
+    /// </param>
+    /// <returns>
+    ///   graphite フォーマットの文字列
+    /// </returns>
     function MetricToStr4Graphite(Metric: TCollectedMetric;
       FmtType: TPdhFmtType): string;
-    procedure SettingToUdpClientFrom(const Carbonator: IXMLCarbonatorType);
-    procedure SettingToCollectThreadFrom(const Carbonator: IXMLCarbonatorType);
-    function GetCollectMetricFrom(const AddCounter: IXMLAddType): string;
+
+
+    /// <remarks>
+    ///   設定ファイルにそったサブスレッドを生成する
+    /// </remarks>
+    /// <param name="ConfigXML">
+    ///   設定が書かれたxml
+    /// </param>
+    procedure InitSubThreadsFrom(const ConfigXML: TXMLDocument);
+
+    /// <remarks>
+    ///   通信スレッドの生成処理
+    /// </remarks>
+    /// <param name="Carbonator">
+    ///   設定が書かれたxml
+    /// </param>
+    /// <returns>
+    ///   通信スレッド
+    /// </returns>
+    function CreateUdpClientFrom(const Carbonator: IXMLCarbonatorType): TTcpSendThread;
+
+    /// <remarks>
+    ///   パフォーマンス取得スレッドの生成処理
+    /// </remarks>
+    /// <param name="Carbonator">
+    ///   設定が書かれたxml
+    /// </param>
+    /// <returns>
+    ///   パフォーマンス取得スレッド
+    /// </returns>
+    function CreateCollectThreadFrom(const Carbonator: IXMLCarbonatorType): TMetricsCollectorThread;
     function GetSendPathFrom(const AddCounter: IXMLAddType): string;
-  public const
-    INTERVAL = 100;
+  public
     function GetServiceController: TServiceController; override;
-    procedure SetCollectSettingFrom(const ConfigXML: TXMLDocument);
-    { Public �錾 }
+    { Public 宣言 }
   end;
 
 var
@@ -137,34 +176,12 @@ end;
 function TPerfService.FreeSubThreads(): Boolean;
 begin
   FCollectThread.Terminate();
-  FreeAndNil(FCollectThread);
   FSendThread.Terminate();
+
+  FreeAndNil(FCollectThread);
   FreeAndNil(FSendThread);
 
   Result := not IsExistSubThreads();
-end;
-
-function TPerfService.GetCollectMetricFrom(const AddCounter
-  : IXMLAddType): string;
-var
-  Instance: string;
-  Counter: string;
-begin
-  Result := EmptyStr;
-  Instance := EmptyStr;
-  Counter := EmptyStr;
-
-  if not SameStr(AddCounter.Instance, EmptyStr) then
-  begin
-    Instance := Format('(%s)', [AddCounter.Instance]);
-  end;
-
-  if not SameStr(AddCounter.Counter, '*') then
-  begin
-    Counter := Format('%s', [AddCounter.Counter]);
-  end;
-
-  Result := Format('\%s%s\%s', [AddCounter.Category, Instance, Counter]);
 end;
 
 function TPerfService.GetLocalMachineName: string;
@@ -214,7 +231,7 @@ end;
 procedure TPerfService.ServiceContinue(Sender: TService;
 var Continued: Boolean);
 begin
-  SetCollectSettingFrom(config);
+  InitSubThreadsFrom(config);
   Continued := StartSubThreads();
 end;
 
@@ -233,7 +250,7 @@ begin
 
   FLogStream := TStreamWriter.Create(LogFileName, True, TEncoding.UTF8);
   FIsConsoleMode := FindCmdLineSwitch('console');
-  SetCollectSettingFrom(config);
+  InitSubThreadsFrom(config);
 
   if FIsConsoleMode then
   begin
@@ -245,6 +262,8 @@ begin
 end;
 
 procedure TPerfService.ServiceExecute(Sender: TService);
+const
+  INTERVAL = 100;
 begin
   FLogStream.WriteLine('ServiceExecute');
   while not Terminated do
@@ -276,7 +295,7 @@ begin
   FreeAndNil(FLogStream);
 end;
 
-procedure TPerfService.SetCollectSettingFrom(const ConfigXML: TXMLDocument);
+procedure TPerfService.InitSubThreadsFrom(const ConfigXML: TXMLDocument);
 var
   config: IXMLConfigurationType;
 begin
@@ -288,8 +307,8 @@ begin
   config := nil;
   try
     config := Getconfiguration(ConfigXML);
-    SettingToCollectThreadFrom(config.Carbonator);
-    SettingToUdpClientFrom(config.Carbonator);
+    FCollectThread := CreateCollectThreadFrom(config.Carbonator);
+    FSendThread := CreateUdpClientFrom(config.Carbonator);
   except
     on E: Exception do
     begin
@@ -299,33 +318,35 @@ begin
   end;
 end;
 
-procedure TPerfService.SettingToCollectThreadFrom(const Carbonator
-  : IXMLCarbonatorType);
+function TPerfService.CreateCollectThreadFrom(const Carbonator
+  : IXMLCarbonatorType): TMetricsCollectorThread;
 var
   AddCounter: IXMLAddType;
   ii: Integer;
   Count: Integer;
 begin
-  FCollectThread := TMetricsCollectorThread.Create();
+  Result := nil;
+  Result := TMetricsCollectorThread.Create();
 
   Count := Carbonator.Counters.Count;
   for ii := 0 to Count - 1 do
   begin
     AddCounter := Carbonator.Counters[ii];
-    FCollectThread.AddCounter(GetCollectMetricFrom(AddCounter),
+    Result.AddCounter(AddCounter.Category, AddCounter.Counter, AddCounter.Instance,
       GetSendPathFrom(AddCounter));
   end;
+  Result.SetIntervalEvent(Carbonator.CollectionInterval,
+    OutputToSender);
+
   FLogStream.WriteLine('CollectionInterval: ' +
     IntToStr(Carbonator.CollectionInterval));
-
-  FCollectThread.SetIntervalEvent(Carbonator.CollectionInterval,
-    OutputToSender);
 end;
 
-procedure TPerfService.SettingToUdpClientFrom(const Carbonator
-  : IXMLCarbonatorType);
+function TPerfService.CreateUdpClientFrom(const Carbonator
+  : IXMLCarbonatorType): TTcpSendThread;
 begin
-  FSendThread := TTcpSendThread.Create(True, Carbonator.Graphite.Server,
+  Result := nil;
+  Result := TTcpSendThread.Create(True, Carbonator.Graphite.Server,
     Carbonator.Graphite.Port, Carbonator.ReportingInterval,
     Carbonator.Counters.Count * 1000, encASCII);
 
@@ -361,7 +382,7 @@ begin
     FLogStream.WriteLine('     ExistSubThreads');
     FSendThread.Start;
     FCollectThread.Start;
-    Sleep(100);
+
     Result := StartedSubThreads();
   end;
   FLogStream.WriteLine('     Result: ' + BoolToStr(Result, True));

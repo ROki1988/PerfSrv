@@ -1,4 +1,4 @@
-program PerfSvc;
+ï»¿program PerfSvc;
 
 uses
   Vcl.SvcMgr,
@@ -11,17 +11,17 @@ uses
 {$R *.RES}
 
 begin
-  // Windows 2003 Server ‚Å‚ÍACoRegisterClassObject ‚Ì‘O‚É StartServiceCtrlDispatcher ‚ğ
-  // ŒÄ‚Ño‚·•K—v‚ª‚ ‚è‚Ü‚·B‘OÒ‚Í Application.Initialize ‚ÅŠÔÚ“I‚É
-  // ŒÄ‚Ño‚³‚ê‚é‚±‚Æ‚ª‚ ‚è‚Ü‚·BTServiceApplication.DelayInitialize ‚Å‚ÍA
-  // (StartServiceCtrlDispatcher ‚ªŒÄ‚Ño‚³‚ê‚½Œã‚Å) TService.Main ‚©‚ç
-  // Application.Initialize ‚ğŒÄ‚Ño‚·‚±‚Æ‚ª‚Å‚«‚Ü‚·B
+  // Windows 2003 Server ã§ã¯ã€CoRegisterClassObject ã®å‰ã« StartServiceCtrlDispatcher ã‚’
+  // å‘¼ã³å‡ºã™å¿…è¦ãŒã‚ã‚Šã¾ã™ã€‚å‰è€…ã¯ Application.Initialize ã§é–“æ¥çš„ã«
+  // å‘¼ã³å‡ºã•ã‚Œã‚‹ã“ã¨ãŒã‚ã‚Šã¾ã™ã€‚TServiceApplication.DelayInitialize ã§ã¯ã€
+  // (StartServiceCtrlDispatcher ãŒå‘¼ã³å‡ºã•ã‚ŒãŸå¾Œã§) TService.Main ã‹ã‚‰
+  // Application.Initialize ã‚’å‘¼ã³å‡ºã™ã“ã¨ãŒã§ãã¾ã™ã€‚
   //
-  // Application ƒIƒuƒWƒFƒNƒg‚Ì’x‰„‰Šú‰»‚ÍA‰Šú‰»‚æ‚è‘O‚É”­¶‚·‚é
-  // ƒCƒxƒ“ƒg (‚½‚Æ‚¦‚Î TService.OnCreate ‚È‚Ç) ‚É‰e‹¿‚ğ‹y‚Ú‚·
-  // ‰Â”\«‚ª‚ ‚è‚Ü‚·B‚±‚ê‚ğ„§‚·‚é‚Ì‚ÍAServiceApplication ‚ªA
-  // Windows 2003 Server ‚Åg—p‚·‚é‚½‚ß‚Ì‚à‚Ì‚ÅA‚©‚Â OLE ‚É
-  // ƒNƒ‰ƒX ƒIƒuƒWƒFƒNƒg‚ğ“o˜^‚·‚éê‡‚¾‚¯‚Å‚·B
+  // Application ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã®é…å»¶åˆæœŸåŒ–ã¯ã€åˆæœŸåŒ–ã‚ˆã‚Šå‰ã«ç™ºç”Ÿã™ã‚‹
+  // ã‚¤ãƒ™ãƒ³ãƒˆ (ãŸã¨ãˆã° TService.OnCreate ãªã©) ã«å½±éŸ¿ã‚’åŠã¼ã™
+  // å¯èƒ½æ€§ãŒã‚ã‚Šã¾ã™ã€‚ã“ã‚Œã‚’æ¨å¥¨ã™ã‚‹ã®ã¯ã€ServiceApplication ãŒã€
+  // Windows 2003 Server ã§ä½¿ç”¨ã™ã‚‹ãŸã‚ã®ã‚‚ã®ã§ã€ã‹ã¤ OLE ã«
+  // ã‚¯ãƒ©ã‚¹ ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã‚’ç™»éŒ²ã™ã‚‹å ´åˆã ã‘ã§ã™ã€‚
   //
   // Application.DelayInitialize := True;
   //

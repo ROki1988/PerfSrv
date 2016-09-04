@@ -1,4 +1,4 @@
-unit CollectThreadTests;
+﻿unit CollectThreadTests;
 
 interface
 
@@ -17,8 +17,8 @@ type
     [TearDown]
     procedure TearDown;
 
-    [TestCase('valid pattern', 'perf,send,1')]
-    procedure Test(const Path, SendPath: string; Counter: Integer);
+    [TestCase('valid pattern', 'Processor,% Processor Time,_Total,hogehoge,1')]
+    procedure Test(const Category, Counter, Instance, SendPath: string; ListCounter: Integer);
 
   end;
 
@@ -27,6 +27,8 @@ implementation
 type
   TMetricsCollectorThreadHelper = class helper for TMetricsCollectorThread
   public
+    function GetCollectMetricFromTest(const Category, Counter, Instance
+      : string): string;
     function GetPathPairConunt: Integer;
   end;
 
@@ -42,13 +44,19 @@ begin
   FreeAndNil(FThread);
 end;
 
-procedure TMyTestObject.Test(const Path, SendPath: string; Counter: Integer);
+procedure TMyTestObject.Test(const Category, Counter, Instance, SendPath: string; ListCounter: Integer);
 begin
-  FThread.AddCounter(Path, SendPath);
-  Assert.AreEqual(FThread.GetPathPairConunt(), Counter);
+  FThread.AddCounter(Category, Counter, Instance, SendPath);
+  Assert.AreEqual(FThread.GetPathPairConunt(), ListCounter);
 end;
 
 { TMetricsCollectorThread }
+
+function TMetricsCollectorThreadHelper.GetCollectMetricFromTest(const Category,
+  Counter, Instance: string): string;
+begin
+  Result := Self.GetCollectMetricFromTest(Category, Counter, Instance);
+end;
 
 function TMetricsCollectorThreadHelper.GetPathPairConunt: Integer;
 begin

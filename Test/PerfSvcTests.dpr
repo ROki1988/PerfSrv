@@ -1,4 +1,4 @@
-program PerfSvcTests;
+﻿program PerfSvcTests;
 
 {$IFNDEF TESTINSIGHT}
 {$APPTYPE CONSOLE}
