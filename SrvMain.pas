@@ -103,10 +103,84 @@ uses
 
 {$R *.dfm}
 
+{$REGION 'Service'}
 procedure ServiceController(CtrlCode: DWord); stdcall;
 begin
   PerfService.Controller(CtrlCode);
 end;
+
+function TPerfService.GetServiceController: TServiceController;
+begin
+  Result := ServiceController;
+end;
+
+procedure TPerfService.ServiceContinue(Sender: TService;
+var Continued: Boolean);
+begin
+  InitSubThreadsFrom(config);
+  Continued := StartSubThreads();
+end;
+
+procedure TPerfService.ServiceCreate(Sender: TObject);
+var
+  LogFileName: string;
+begin
+  SetCurrentDir(ExtractFileDir(ParamStr(0)));
+  LogFileName := TPath.Combine(GetCurrentDir, FormatDateTime('yymmdd_', Now()) +
+    'perf.log');
+  FComputerName := GetLocalMachineName();
+
+  FCollectThread := nil;
+  FSendThread := nil;
+  FLogStream := nil;
+
+  FLogStream := TStreamWriter.Create(LogFileName, True, TEncoding.UTF8);
+  FIsConsoleMode := FindCmdLineSwitch('console');
+  InitSubThreadsFrom(config);
+
+  if FIsConsoleMode then
+  begin
+{$IFDEF DEBUG}
+    ReportMemoryLeaksOnShutdown := True;
+{$ENDIF}
+    StartConsoleMode();
+  end;
+end;
+
+procedure TPerfService.ServiceExecute(Sender: TService);
+const
+  INTERVAL = 100;
+begin
+  FLogStream.WriteLine('ServiceExecute');
+  while not Terminated do
+  begin
+
+    Sleep(INTERVAL);
+    ServiceThread.ProcessRequests(False);
+  end;
+end;
+
+procedure TPerfService.ServicePause(Sender: TService; var Paused: Boolean);
+begin
+  Paused := FreeSubThreads();
+end;
+
+procedure TPerfService.ServiceStart(Sender: TService; var Started: Boolean);
+begin
+  Started := StartSubThreads();
+
+  FLogStream.WriteLine('ServiceStart');
+end;
+
+procedure TPerfService.ServiceStop(Sender: TService; var Stopped: Boolean);
+begin
+  Stopped := FreeSubThreads();
+
+  FLogStream.WriteLine('ServiceStop');
+  FLogStream.Flush();
+  FreeAndNil(FLogStream);
+end;
+{$ENDREGION}
 
 procedure TPerfService.OutputToSender(Metric: TObject);
 var
@@ -219,81 +293,9 @@ begin
   Result := ReplaceStr(Result, '%COUNTER_INSTANCE%', Instance);
 end;
 
-function TPerfService.GetServiceController: TServiceController;
-begin
-  Result := ServiceController;
-end;
-
 function TPerfService.IsExistSubThreads: Boolean;
 begin
   Result := Assigned(FCollectThread) and Assigned(FSendThread);
-end;
-
-procedure TPerfService.ServiceContinue(Sender: TService;
-var Continued: Boolean);
-begin
-  InitSubThreadsFrom(config);
-  Continued := StartSubThreads();
-end;
-
-procedure TPerfService.ServiceCreate(Sender: TObject);
-var
-  LogFileName: string;
-begin
-  SetCurrentDir(ExtractFileDir(ParamStr(0)));
-  LogFileName := TPath.Combine(GetCurrentDir, FormatDateTime('yymmdd_', Now()) +
-    'perf.log');
-  FComputerName := GetLocalMachineName();
-
-  FCollectThread := nil;
-  FSendThread := nil;
-  FLogStream := nil;
-
-  FLogStream := TStreamWriter.Create(LogFileName, True, TEncoding.UTF8);
-  FIsConsoleMode := FindCmdLineSwitch('console');
-  InitSubThreadsFrom(config);
-
-  if FIsConsoleMode then
-  begin
-{$IFDEF DEBUG}
-    ReportMemoryLeaksOnShutdown := True;
-{$ENDIF}
-    StartConsoleMode();
-  end;
-end;
-
-procedure TPerfService.ServiceExecute(Sender: TService);
-const
-  INTERVAL = 100;
-begin
-  FLogStream.WriteLine('ServiceExecute');
-  while not Terminated do
-  begin
-
-    Sleep(INTERVAL);
-    ServiceThread.ProcessRequests(False);
-  end;
-end;
-
-procedure TPerfService.ServicePause(Sender: TService; var Paused: Boolean);
-begin
-  Paused := FreeSubThreads();
-end;
-
-procedure TPerfService.ServiceStart(Sender: TService; var Started: Boolean);
-begin
-  Started := StartSubThreads();
-
-  FLogStream.WriteLine('ServiceStart');
-end;
-
-procedure TPerfService.ServiceStop(Sender: TService; var Stopped: Boolean);
-begin
-  Stopped := FreeSubThreads();
-
-  FLogStream.WriteLine('ServiceStop');
-  FLogStream.Flush();
-  FreeAndNil(FLogStream);
 end;
 
 procedure TPerfService.InitSubThreadsFrom(const ConfigXML: TXMLDocument);
