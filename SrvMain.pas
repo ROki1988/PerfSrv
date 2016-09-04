@@ -12,7 +12,7 @@ uses
 
 type
   TPerfService = class(TService)
-    Config: TXMLDocument;
+    config: TXMLDocument;
     procedure ServiceCreate(Sender: TObject);
     procedure ServiceStart(Sender: TService; var Started: Boolean);
     procedure ServiceStop(Sender: TService; var Stopped: Boolean);
@@ -89,8 +89,7 @@ begin
         procedure
         begin
           Write(Output, string.Join(EmptyStr, StrList.ToArray));
-        end
-      );
+        end);
     end;
   finally
     FreeAndNil(StrList);
@@ -98,7 +97,7 @@ begin
 end;
 
 function TPerfService.MetricToStr4Graphite(Metric: TCollectedMetric;
-  FmtType: TPdhFmtType): string;
+FmtType: TPdhFmtType): string;
 var
   UnixTime: Int64;
   S: string;
@@ -131,7 +130,7 @@ begin
       pftNocap100:
         ;
     end;
-    Result :=  string.join(' ', [SendPath, S, UnixTime.ToString]) + #10;
+    Result := string.Join(' ', [SendPath, S, UnixTime.ToString]) + #10;
   end;
 end;
 
@@ -215,7 +214,7 @@ end;
 procedure TPerfService.ServiceContinue(Sender: TService;
 var Continued: Boolean);
 begin
-  SetCollectSettingFrom(Config);
+  SetCollectSettingFrom(config);
   Continued := StartSubThreads();
 end;
 
@@ -224,8 +223,8 @@ var
   LogFileName: string;
 begin
   SetCurrentDir(ExtractFileDir(ParamStr(0)));
-  LogFileName := TPath.Combine(GetCurrentDir, FormatDateTime('yymmdd_', Now())
-    + 'perf.log');
+  LogFileName := TPath.Combine(GetCurrentDir, FormatDateTime('yymmdd_', Now()) +
+    'perf.log');
   FComputerName := GetLocalMachineName();
 
   FCollectThread := nil;
@@ -234,13 +233,13 @@ begin
 
   FLogStream := TStreamWriter.Create(LogFileName, True, TEncoding.UTF8);
   FIsConsoleMode := FindCmdLineSwitch('console');
-  SetCollectSettingFrom(Config);
+  SetCollectSettingFrom(config);
 
   if FIsConsoleMode then
   begin
-    {$IFDEF DEBUG}
+{$IFDEF DEBUG}
     ReportMemoryLeaksOnShutdown := True;
-    {$ENDIF}
+{$ENDIF}
     StartConsoleMode();
   end;
 end;
@@ -279,18 +278,18 @@ end;
 
 procedure TPerfService.SetCollectSettingFrom(const ConfigXML: TXMLDocument);
 var
-  Config: IXMLConfigurationType;
+  config: IXMLConfigurationType;
 begin
   if IsExistSubThreads() then
   begin
     Exit();
   end;
 
-  Config := nil;
+  config := nil;
   try
-    Config := Getconfiguration(ConfigXML);
-    SettingToCollectThreadFrom(Config.Carbonator);
-    SettingToUdpClientFrom(Config.Carbonator);
+    config := Getconfiguration(ConfigXML);
+    SettingToCollectThreadFrom(config.Carbonator);
+    SettingToUdpClientFrom(config.Carbonator);
   except
     on E: Exception do
     begin
@@ -365,7 +364,7 @@ begin
     Sleep(100);
     Result := StartedSubThreads();
   end;
-    FLogStream.WriteLine('     Result: ' + BoolToStr(Result, True));
+  FLogStream.WriteLine('     Result: ' + BoolToStr(Result, True));
   FLogStream.WriteLine('[end] StartSubThreads');
 end;
 

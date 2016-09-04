@@ -208,7 +208,7 @@ begin
 end;
 
 procedure TMetricsCollectorThread.SetIntervalEvent(AIntervalMilSec: Integer;
-  AIntervalEvent: TNotifyEvent);
+AIntervalEvent: TNotifyEvent);
 begin
   FIntervalMilSec := AIntervalMilSec;
   FIntervalEvent := AIntervalEvent;

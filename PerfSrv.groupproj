@@ -1,0 +1,48 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{A2A96734-E2D0-4BA8-95CB-A2C54A9F7923}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="PerfSvc.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="Test\PerfSvcTests.dproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="PerfSvc">
+        <MSBuild Projects="PerfSvc.dproj"/>
+    </Target>
+    <Target Name="PerfSvc:Clean">
+        <MSBuild Projects="PerfSvc.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="PerfSvc:Make">
+        <MSBuild Projects="PerfSvc.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="PerfSvcTests">
+        <MSBuild Projects="Test\PerfSvcTests.dproj"/>
+    </Target>
+    <Target Name="PerfSvcTests:Clean">
+        <MSBuild Projects="Test\PerfSvcTests.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="PerfSvcTests:Make">
+        <MSBuild Projects="Test\PerfSvcTests.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="PerfSvc;PerfSvcTests"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="PerfSvc:Clean;PerfSvcTests:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="PerfSvc:Make;PerfSvcTests:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>
