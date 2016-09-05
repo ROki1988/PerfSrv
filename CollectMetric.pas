@@ -27,8 +27,7 @@ type
     property CollectedDateTime: TDateTime read FCollectedDateTime;
 
     /// <summary>
-    /// 送信用パス;
-    /// ここにないほうが良いけど･･･
+    /// 取得元のカウンター
     /// </summary>
     property CounterHandle: PDH_HCOUNTER read FCounterHandle;
 
@@ -57,7 +56,7 @@ type
     procedure Execute(); override;
   public
     /// <summary>
-    /// スレッド内の定期処理設定
+    /// コンストラクタ
     /// </summary>
     /// <param name="AIntervalMilSec">
     /// イベントの実行周期
