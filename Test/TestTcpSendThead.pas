@@ -32,7 +32,8 @@ uses
 procedure TTestTcpSendThead.Setup;
 begin
   FThread := nil;
-  FThread := TTcpSendThread.Create(True, 'localhost', 55056, 100, 100, encASCII);
+  FThread := TTcpSendThread.Create(True, 'localhost', 55056, 100, 100,
+    encASCII);
 end;
 
 procedure TTestTcpSendThead.TearDown;

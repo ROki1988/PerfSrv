@@ -40,7 +40,8 @@ type
 
     procedure OutputToSender(Metric: TObject);
 
-    procedure Convert(const AFrom: IXMLAddType; var ATo: TPdhCounterPathElements);
+    procedure Convert(const AFrom: IXMLAddType;
+      var ATo: TPdhCounterPathElements);
 
     function GetLocalMachineName(): string;
 
@@ -105,8 +106,8 @@ uses
   ObjectUtils, IdGlobal;
 
 {$R *.dfm}
-
 {$REGION 'Service'}
+
 procedure ServiceController(CtrlCode: DWord); stdcall;
 begin
   PerfService.Controller(CtrlCode);
@@ -118,7 +119,7 @@ begin
 end;
 
 procedure TPerfService.ServiceContinue(Sender: TService;
-var Continued: Boolean);
+  var Continued: Boolean);
 begin
   InitSubThreadsFrom(config);
   Continued := StartSubThreads();
@@ -250,7 +251,8 @@ begin
       pftNocap100:
         ;
     end;
-    Result := string.Join(' ', [FSendPathDic[CounterHandle], S, UnixTime.ToString]) + #10;
+    Result := string.Join(' ', [FSendPathDic[CounterHandle], S,
+      UnixTime.ToString]) + #10;
   end;
 end;
 
@@ -328,7 +330,7 @@ begin
 end;
 
 procedure TPerfService.Convert(const AFrom: IXMLAddType;
-  var ATo: TPdhCounterPathElements);
+var ATo: TPdhCounterPathElements);
 begin
   ZeroMemory(@ATo, SizeOf(TPdhCounterPathElements));
 
@@ -354,19 +356,19 @@ var
   hCounter: PDH_HCOUNTER;
 begin
   Result := nil;
-  Result := TMetricsCollectorThread.Create();
+  Result := TMetricsCollectorThread.Create(Carbonator.CollectionInterval,
+    OutputToSender);
 
   Count := Carbonator.Counters.Count;
   for ii := 0 to Count - 1 do
   begin
-    ZeroMemory(@PdhCounter, Sizeof(TPdhCounterPathElements));
+    ZeroMemory(@PdhCounter, SizeOf(TPdhCounterPathElements));
     Convert(Carbonator.Counters[ii], PdhCounter);
     if Result.TryAddCounter(@PdhCounter, hCounter) then
     begin
       FSendPathDic.Add(hCounter, GetSendPathFrom(Carbonator.Counters[ii]));
     end;
   end;
-  Result.SetIntervalEvent(Carbonator.CollectionInterval, OutputToSender);
 
   FLogStream.WriteLine('CollectionInterval: ' +
     IntToStr(Carbonator.CollectionInterval));

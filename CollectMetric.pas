@@ -41,7 +41,7 @@ type
 type
   TMetricsCollectorThread = class(TThread)
   strict private
-    FIntervalMilSec: Integer;
+    FIntervalMilSec: WORD;
     hQuery: PDH_HQUERY;
     hCounters: TList<PDH_HCOUNTER>;
     FCollectedMetricList: TThreadList<TCollectedMetric>;
@@ -56,9 +56,6 @@ type
 
     procedure Execute(); override;
   public
-    constructor Create();
-    destructor Destroy; override;
-
     /// <summary>
     /// スレッド内の定期処理設定
     /// </summary>
@@ -68,8 +65,8 @@ type
     /// <param name="AIntervalEvent">
     /// イベント
     /// </param>
-    procedure SetIntervalEvent(AIntervalMilSec: Integer;
-      AIntervalEvent: TNotifyEvent);
+    constructor Create(AIntervalMilSec: WORD; AIntervalEvent: TNotifyEvent);
+    destructor Destroy; override;
 
     /// <summary>
     /// 取得したいカウンターを追加する
@@ -143,16 +140,18 @@ begin
   end;
 end;
 
-constructor TMetricsCollectorThread.Create();
+constructor TMetricsCollectorThread.Create(AIntervalMilSec: WORD;
+  AIntervalEvent: TNotifyEvent);
 begin
   inherited Create(True);
   hQuery := 0;
-  FIntervalMilSec := 1000;
+  FIntervalMilSec := AIntervalMilSec;
   FreeOnTerminate := False;
+
+  FIntervalEvent := AIntervalEvent;
 
   hCounters := nil;
   FCollectedMetricList := nil;
-  FIntervalEvent := nil;
 
   PdhOpenQuery(nil, 0, hQuery);
 
@@ -228,9 +227,6 @@ begin
 end;
 
 procedure TMetricsCollectorThread.InitQuery;
-var
-  CurrentHCounter: PDH_HCOUNTER;
-  ii: Integer;
 begin
   PdhCollectQueryData(hQuery);
   Sleep(FIntervalMilSec);
@@ -262,24 +258,15 @@ begin
   end;
 end;
 
-procedure TMetricsCollectorThread.SetIntervalEvent(AIntervalMilSec: Integer;
-AIntervalEvent: TNotifyEvent);
-begin
-  FIntervalMilSec := AIntervalMilSec;
-  FIntervalEvent := AIntervalEvent;
-end;
-
 function TMetricsCollectorThread.TryMakeCounterPathFrom(const Element
   : PPdhCounterPathElements; var Path: string): Boolean;
 var
   Buff: array [0 .. PDH_MAX_COUNTER_PATH] of WideChar;
   Size: DWORD;
-  Ren: HRESULT;
 begin
   Result := False;
   Path := EmptyStr;
   Size := 0;
-  Ren := 0;
   ZeroMemory(@Buff, SizeOf(WideChar) * PDH_MAX_COUNTER_PATH);
 
   PdhMakeCounterPath(Element, Buff, Size, 0);

@@ -30,7 +30,7 @@ uses
 procedure TMyTestObject.Setup;
 begin
   FThread := nil;
-  FThread := TMetricsCollectorThread.Create();
+  FThread := TMetricsCollectorThread.Create(100, nil);
 end;
 
 procedure TMyTestObject.TearDown;
