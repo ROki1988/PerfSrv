@@ -8,7 +8,7 @@ uses
   System.Generics.Collections, System.DateUtils, System.StrUtils,
   System.IOUtils, config, Winapi.ActiveX,
   CollectMetric, TcpSendThread, Xml.xmldom, Xml.XMLIntf, Xml.Win.msxmldom,
-  Xml.XMLDoc;
+  Xml.XMLDoc, JwaPdh;
 
 type
   TPerfService = class(TService)
@@ -19,10 +19,11 @@ type
     procedure ServiceContinue(Sender: TService; var Continued: Boolean);
     procedure ServicePause(Sender: TService; var Paused: Boolean);
     procedure ServiceExecute(Sender: TService);
-  private
+  strict private
     { Private 宣言 }
     FCollectThread: TMetricsCollectorThread;
     FSendThread: TTcpSendThread;
+    FSendPathDic: TDictionary<PDH_HCOUNTER, string>;
 
     FLogStream: TStreamWriter;
     FComputerName: string;
@@ -38,6 +39,8 @@ type
   protected
 
     procedure OutputToSender(Metric: TObject);
+
+    procedure Convert(const AFrom: IXMLAddType; var ATo: TPdhCounterPathElements);
 
     function GetLocalMachineName(): string;
 
@@ -132,8 +135,10 @@ begin
 
   FCollectThread := nil;
   FSendThread := nil;
+  FSendPathDic := nil;
   FLogStream := nil;
 
+  FSendPathDic := TDictionary<PDH_HCOUNTER, string>.Create();
   FLogStream := TStreamWriter.Create(LogFileName, True, TEncoding.UTF8);
   FIsConsoleMode := FindCmdLineSwitch('console');
   InitSubThreadsFrom(config);
@@ -176,6 +181,7 @@ procedure TPerfService.ServiceStop(Sender: TService; var Stopped: Boolean);
 begin
   Stopped := FreeSubThreads();
 
+  FreeAndNil(FSendPathDic);
   FLogStream.WriteLine('ServiceStop');
   FLogStream.Flush();
   FreeAndNil(FLogStream);
@@ -232,7 +238,7 @@ begin
       pftLong:
         S := IntToStr(Metric.longValue);
       pftDouble:
-        S := FloatToStr(Metric.doubleValue);
+        S := Format('%.3f', [Metric.doubleValue]);
       pftLarge:
         S := IntToStr(Metric.largeValue);
       pftNoscale:
@@ -244,7 +250,7 @@ begin
       pftNocap100:
         ;
     end;
-    Result := string.Join(' ', [SendPath, S, UnixTime.ToString]) + #10;
+    Result := string.Join(' ', [FSendPathDic[CounterHandle], S, UnixTime.ToString]) + #10;
   end;
 end;
 
@@ -321,12 +327,31 @@ begin
   end;
 end;
 
+procedure TPerfService.Convert(const AFrom: IXMLAddType;
+  var ATo: TPdhCounterPathElements);
+begin
+  ZeroMemory(@ATo, SizeOf(TPdhCounterPathElements));
+
+  ATo.szObjectName := PWideChar(AFrom.Category);
+
+  if not string.IsNullOrWhiteSpace(AFrom.Instance) then
+  begin
+    ATo.szInstanceName := PWideChar(AFrom.Instance);
+  end;
+
+  if not string.IsNullOrWhiteSpace(AFrom.Counter) then
+  begin
+    ATo.szCounterName := PWideChar(AFrom.Counter);
+  end;
+end;
+
 function TPerfService.CreateCollectThreadFrom(const Carbonator
   : IXMLCarbonatorType): TMetricsCollectorThread;
 var
-  AddCounter: IXMLAddType;
   ii: Integer;
   Count: Integer;
+  PdhCounter: TPdhCounterPathElements;
+  hCounter: PDH_HCOUNTER;
 begin
   Result := nil;
   Result := TMetricsCollectorThread.Create();
@@ -334,9 +359,12 @@ begin
   Count := Carbonator.Counters.Count;
   for ii := 0 to Count - 1 do
   begin
-    AddCounter := Carbonator.Counters[ii];
-    Result.AddCounter(AddCounter.Category, AddCounter.Counter,
-      AddCounter.Instance, GetSendPathFrom(AddCounter));
+    ZeroMemory(@PdhCounter, Sizeof(TPdhCounterPathElements));
+    Convert(Carbonator.Counters[ii], PdhCounter);
+    if Result.TryAddCounter(@PdhCounter, hCounter) then
+    begin
+      FSendPathDic.Add(hCounter, GetSendPathFrom(Carbonator.Counters[ii]));
+    end;
   end;
   Result.SetIntervalEvent(Carbonator.CollectionInterval, OutputToSender);
 

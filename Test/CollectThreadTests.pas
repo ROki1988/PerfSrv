@@ -3,7 +3,7 @@
 interface
 
 uses
-  DUnitX.TestFramework, CollectMetric, System.SysUtils;
+  DUnitX.TestFramework, CollectMetric, System.SysUtils, Winapi.Windows;
 
 type
 
@@ -17,20 +17,15 @@ type
     [TearDown]
     procedure TearDown;
 
-    [TestCase('valid pattern', 'Processor,% Processor Time,_Total,hogehoge,1')]
-    procedure Test(const Category, Counter, Instance, SendPath: string; ListCounter: Integer);
+    [TestCase('valid pattern', 'Processor,% Processor Time,_Total')]
+    procedure Test(const Category, Counter, Instance: string);
 
   end;
 
 implementation
 
-type
-  TMetricsCollectorThreadHelper = class helper for TMetricsCollectorThread
-  public
-    function GetCollectMetricFromTest(const Category, Counter, Instance
-      : string): string;
-    function GetPathPairConunt: Integer;
-  end;
+uses
+  JwaPdh;
 
 procedure TMyTestObject.Setup;
 begin
@@ -44,24 +39,26 @@ begin
   FreeAndNil(FThread);
 end;
 
-procedure TMyTestObject.Test(const Category, Counter, Instance, SendPath: string; ListCounter: Integer);
+procedure TMyTestObject.Test(const Category, Counter, Instance: string);
+var
+  hCounter: PDH_HCOUNTER;
+  AddCounter: TPdhCounterPathElements;
 begin
-  FThread.AddCounter(Category, Counter, Instance, SendPath);
-  Assert.AreEqual(FThread.GetPathPairConunt(), ListCounter);
-end;
+  ZeroMemory(@AddCounter, SizeOf(TPdhCounterPathElements));
+  AddCounter.szObjectName := PWideChar(Category);
 
-{ TMetricsCollectorThread }
+  if not string.IsNullOrWhiteSpace(Counter) then
+  begin
+    AddCounter.szCounterName := PWideChar(Counter);
+  end;
 
-function TMetricsCollectorThreadHelper.GetCollectMetricFromTest(const Category,
-  Counter, Instance: string): string;
-begin
-  Result := Self.GetCollectMetricFromTest(Category, Counter, Instance);
-end;
+  if not string.IsNullOrWhiteSpace(Instance) then
+  begin
+    AddCounter.szInstanceName := PWideChar(Instance);
+  end;
 
-function TMetricsCollectorThreadHelper.GetPathPairConunt: Integer;
-begin
-  Result := 0;
-  Result := Self.FCounterPathPairs.Count;
+  Assert.IsTrue(FThread.TryAddCounter(@AddCounter, hCounter));
+  Assert.AreNotEqual(hCounter, PDH_HCOUNTER(0));
 end;
 
 initialization

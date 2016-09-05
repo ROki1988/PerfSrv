@@ -5,7 +5,7 @@ interface
 type
   TObjectHelper = class helper for TObject
     class function TryCastTo<TTarget: class>(const Source: TObject;
-      var Dest: TTarget): Boolean;
+      var Dest: TTarget): Boolean; static;
   end;
 
 implementation
