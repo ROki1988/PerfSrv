@@ -1,1 +1,1 @@
-sc stop PerfSrv
+sc stop PerfService
