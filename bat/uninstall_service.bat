@@ -1,3 +1,4 @@
 cd /d %~dp0
 
-.\PerfSrv.exe /Install
+.\stop_service.bat
+.\PerfSvc.exe /Uninstall

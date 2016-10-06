@@ -1,3 +1,4 @@
 cd /d %~dp0
 
-.\PerfSrv.exe /Install
+.\PerfSvc.exe /Install
+.\start_service.bat
