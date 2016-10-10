@@ -212,8 +212,10 @@ begin
     for Current in hCounters do
     begin
       ZeroMemory(@Value, SizeOf(TPdhFmtCounterValue));
-      PdhGetFormattedCounterValue(Current, PDH_FMT_DOUBLE, nil, Value);
-      FCollectedMetricList.Add(TCollectedMetric.Create(Current, Value));
+      if Succeeded(PdhGetFormattedCounterValue(Current, PDH_FMT_DOUBLE, nil, Value)) then
+      begin
+        FCollectedMetricList.Add(TCollectedMetric.Create(Current, Value));
+      end;
     end;
 
     DoIntervalEvent();
