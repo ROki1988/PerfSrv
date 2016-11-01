@@ -262,22 +262,31 @@ end;
 function TMetricsCollectorThread.TryMakeCounterPathFrom(const Element
   : PPdhCounterPathElements; var Path: string): Boolean;
 var
-  Buff: array [0 .. PDH_MAX_COUNTER_PATH] of WideChar;
+  Buff: PWideChar;
   Size: DWORD;
 begin
   Result := False;
   Path := EmptyStr;
   Size := 0;
-  ZeroMemory(@Buff, SizeOf(WideChar) * PDH_MAX_COUNTER_PATH);
 
-  PdhMakeCounterPath(Element, Buff, Size, 0);
-  Result := Succeeded(PdhMakeCounterPath(Element, Buff, Size, 0));
-  if not Result then
+  if PdhMakeCounterPath(Element, nil, Size, 0) <> PDH_MORE_DATA then
   begin
-    Exit();
+    Exit(False);
   end;
 
-  Path := WideCharToString(Buff);
+
+  Buff := WideStrAlloc(Size);
+  try
+    ZeroMemory(Buff, Size);
+    Result := Succeeded(PdhMakeCounterPath(Element, Buff, Size, 0));
+    if not Result then
+    begin
+      Exit(Result);
+    end;
+    Path := WideCharToString(Buff);
+  finally
+    StrDispose(Buff);
+  end;
 end;
 
 end.
